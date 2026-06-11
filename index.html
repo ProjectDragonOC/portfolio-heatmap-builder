@@ -523,7 +523,7 @@
   <div class="app">
     <header>
       <div>
-        <h1>Portfolio Heatmap Builder</h1>
+        <h1>포트폴리오 히트맵 빌더</h1>
         <div class="muted">종목·종가/현재가·평단·수량 입력형 보유 히트맵</div>
       </div>
       <div class="header-actions">
@@ -888,7 +888,7 @@
         return;
       }
       const values = data.map(r => sizeMode === "equal" ? 1 : Math.max(r.value, 1));
-      const rects = squarify(values, 0, 0, width, height);
+      const rects = mosaicLayout(values, 0, 0, width, height);
       const metricKey = el.colorMetric.value === "daily" ? "daily" : "returnPct";
       const totalValue = data.reduce((sum, r) => sum + r.value, 0);
       data.forEach((r, i) => {
@@ -917,6 +917,44 @@
       const n = parseNumber(value);
       if (!n) return "-";
       return n.toLocaleString("ko-KR", { maximumFractionDigits: 2 });
+    }
+
+    function mosaicLayout(values, x, y, w, h) {
+      const safeValues = values.map(value => Math.max(value, 0));
+      const total = safeValues.reduce((sum, value) => sum + value, 0);
+      if (total <= 0) return [];
+      const items = safeValues
+        .map((value, i) => ({ i, value }))
+        .sort((a, b) => b.value - a.value);
+      const rowCount = Math.max(1, Math.min(items.length, Math.ceil(Math.sqrt(items.length))));
+      const rows = Array.from({ length: rowCount }, () => ({ items: [], sum: 0 }));
+      items.forEach(item => {
+        const target = rows.reduce((best, row) => row.sum < best.sum ? row : best, rows[0]);
+        target.items.push(item);
+        target.sum += item.value;
+      });
+      rows.sort((a, b) => b.sum - a.sum);
+
+      const rects = Array(values.length);
+      let cy = y;
+      let remainingH = h;
+      rows.forEach((row, rowIndex) => {
+        if (!row.items.length || row.sum <= 0) return;
+        const rowH = rowIndex === rows.length - 1 ? remainingH : Math.max(64, h * (row.sum / total));
+        const actualRowH = Math.min(remainingH, rowH);
+        let cx = x;
+        let remainingW = w;
+        row.items.sort((a, b) => b.value - a.value).forEach((item, itemIndex) => {
+          const itemW = itemIndex === row.items.length - 1 ? remainingW : Math.max(90, w * (item.value / row.sum));
+          const actualW = Math.min(remainingW, itemW);
+          rects[item.i] = { x: cx, y: cy, w: actualW, h: actualRowH };
+          cx += actualW;
+          remainingW -= actualW;
+        });
+        cy += actualRowH;
+        remainingH -= actualRowH;
+      });
+      return rects;
     }
 
     function squarify(values, x, y, w, h) {
@@ -1021,7 +1059,7 @@
       const chartY = 92;
       const chartH = height - chartY - 44;
       const values = data.map(r => sizeMode === "equal" ? 1 : Math.max(r.value, 1));
-      const rects = squarify(values, 24, chartY, width - 48, chartH);
+      const rects = mosaicLayout(values, 24, chartY, width - 48, chartH);
       const metricKey = el.colorMetric.value === "daily" ? "daily" : "returnPct";
       const totalValue = data.reduce((sum, r) => sum + r.value, 0);
       const tiles = data.map((r, i) => {
@@ -1052,7 +1090,7 @@
       return `<?xml version="1.0" encoding="UTF-8"?>
         <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
           <rect width="100%" height="100%" fill="#f5f7fa"/>
-          <text x="24" y="38" fill="#16202a" font-size="28" font-weight="800">Portfolio Heatmap</text>
+          <text x="24" y="38" fill="#16202a" font-size="28" font-weight="800">포트폴리오 히트맵</text>
           <text x="24" y="66" fill="#6b7785" font-size="16">총 평가금액 ${escapeXml(formatMoney(totalValue))} · 크기 ${sizeMode === "equal" ? "동일" : "평가금액"} · 색 ${el.colorMetric.value === "daily" ? "오늘 등락률" : "수익률"}</text>
           ${tiles}
         </svg>`;
