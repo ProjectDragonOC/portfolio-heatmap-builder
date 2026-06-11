@@ -1,0 +1,1211 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Portfolio Heatmap Builder</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f5f7fa;
+      --panel: #ffffff;
+      --panel-2: #eef2f6;
+      --text: #16202a;
+      --muted: #6b7785;
+      --line: #d7dee7;
+      --line-strong: #b8c3d0;
+      --accent: #1268b3;
+      --accent-2: #0b4f8f;
+      --good: #c9352b;
+      --bad: #2369c9;
+      --flat: #7f8790;
+      --warn: #a96500;
+      --shadow: 0 10px 24px rgba(22, 32, 42, .08);
+      --radius: 8px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans KR", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    button, input, select, textarea {
+      font: inherit;
+    }
+
+    button {
+      border: 1px solid var(--line-strong);
+      background: #fff;
+      color: var(--text);
+      min-height: 36px;
+      border-radius: 7px;
+      padding: 7px 10px;
+      cursor: pointer;
+    }
+
+    button:hover { border-color: var(--accent); }
+    button.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+    button.primary:hover { background: var(--accent-2); }
+    button.icon {
+      width: 36px;
+      padding: 0;
+      display: inline-grid;
+      place-items: center;
+      font-weight: 700;
+    }
+    button.danger:hover {
+      border-color: var(--good);
+      color: var(--good);
+    }
+
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr;
+    }
+
+    header {
+      background: #fff;
+      border-bottom: 1px solid var(--line);
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      position: sticky;
+      top: 0;
+      z-index: 20;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 750;
+      letter-spacing: 0;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    main {
+      display: grid;
+      grid-template-columns: minmax(380px, 520px) minmax(0, 1fr);
+      gap: 16px;
+      padding: 16px;
+      max-width: 1680px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      min-width: 0;
+    }
+
+    .panel-head {
+      padding: 14px 14px 10px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 750;
+      letter-spacing: 0;
+    }
+
+    .muted {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .input-panel {
+      display: grid;
+      grid-template-rows: auto auto minmax(320px, 1fr) auto;
+      max-height: calc(100vh - 94px);
+      position: sticky;
+      top: 78px;
+    }
+
+    .controls {
+      padding: 12px 14px;
+      display: grid;
+      gap: 10px;
+      border-bottom: 1px solid var(--line);
+      background: #fbfcfd;
+    }
+
+    .segmented {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      border: 1px solid var(--line-strong);
+      border-radius: 7px;
+      overflow: hidden;
+      min-height: 36px;
+    }
+
+    .segmented button {
+      border: 0;
+      border-radius: 0;
+      min-height: 34px;
+      background: transparent;
+    }
+    .segmented button.active {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .field-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    label {
+      display: grid;
+      gap: 5px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      border: 1px solid var(--line-strong);
+      border-radius: 7px;
+      background: #fff;
+      color: var(--text);
+      padding: 8px 9px;
+      min-height: 36px;
+      outline: none;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(18, 104, 179, .12);
+    }
+
+    textarea {
+      min-height: 118px;
+      resize: vertical;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px;
+    }
+
+    .table-wrap {
+      overflow: auto;
+      min-height: 300px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: #f3f6f9;
+      color: #485665;
+      font-size: 11px;
+      text-align: left;
+      padding: 8px 6px;
+      border-bottom: 1px solid var(--line);
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 6px;
+      border-bottom: 1px solid #edf1f5;
+      vertical-align: middle;
+    }
+
+    td input, td select {
+      padding: 6px 7px;
+      min-height: 32px;
+      font-size: 12px;
+    }
+
+    .col-name { width: 118px; }
+    .col-symbol { width: 78px; }
+    .col-theme { width: 104px; }
+    .col-num { width: 82px; }
+    .col-action { width: 44px; }
+
+    .input-footer {
+      padding: 12px 14px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 1px solid var(--line);
+      background: #fbfcfd;
+    }
+
+    .button-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .view {
+      display: grid;
+      grid-template-rows: auto minmax(480px, 1fr) auto;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .metric {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 12px;
+      box-shadow: var(--shadow);
+      min-height: 78px;
+    }
+
+    .metric .label {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 650;
+    }
+    .metric .value {
+      margin-top: 4px;
+      font-size: 20px;
+      font-weight: 780;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .metric .sub {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 2px;
+    }
+
+    .heatmap-panel {
+      display: grid;
+      grid-template-rows: auto minmax(420px, 1fr);
+      overflow: hidden;
+    }
+
+    .heatmap-toolbar {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .legend {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .swatch {
+      width: 16px;
+      height: 16px;
+      border-radius: 4px;
+      border: 1px solid rgba(0,0,0,.14);
+      display: inline-block;
+      vertical-align: middle;
+    }
+
+    .heatmap {
+      position: relative;
+      min-height: 420px;
+      height: min(66vh, 760px);
+      background: #e7ecf2;
+      overflow: hidden;
+      border-radius: 0 0 var(--radius) var(--radius);
+    }
+
+    .tile {
+      position: absolute;
+      border: 2px solid #fff;
+      overflow: hidden;
+      border-radius: 7px;
+      color: #fff;
+      padding: 8px;
+      display: grid;
+      align-content: start;
+      gap: 2px;
+      text-shadow: 0 1px 2px rgba(0,0,0,.34);
+      min-width: 0;
+    }
+
+    .tile .name {
+      font-weight: 780;
+      font-size: clamp(11px, 1.2vw, 16px);
+      line-height: 1.18;
+      overflow-wrap: anywhere;
+    }
+
+    .tile .symbol,
+    .tile .money,
+    .tile .qty {
+      font-size: clamp(10px, .9vw, 12px);
+      line-height: 1.25;
+      opacity: .96;
+      overflow-wrap: anywhere;
+    }
+
+    .tile .rate {
+      font-weight: 780;
+      font-size: clamp(13px, 1.6vw, 22px);
+      line-height: 1.1;
+      margin-top: 2px;
+    }
+
+    .tile.tiny {
+      padding: 4px;
+      gap: 0;
+      border-width: 1px;
+    }
+    .tile.tiny .money,
+    .tile.tiny .qty,
+    .tile.tiny .symbol { display: none; }
+    .tile.tiny .name { font-size: 10px; }
+    .tile.tiny .rate { font-size: 11px; }
+
+    .empty {
+      height: 100%;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      color: var(--muted);
+      padding: 24px;
+    }
+
+    .details {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(260px, .8fr);
+      gap: 12px;
+    }
+
+    .rank-list {
+      padding: 12px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .rank-item {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      padding: 9px 0;
+      border-bottom: 1px solid #edf1f5;
+    }
+    .rank-item:last-child { border-bottom: 0; }
+    .rank-name {
+      font-weight: 720;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .rank-meta {
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .positive { color: var(--good); }
+    .negative { color: var(--bad); }
+    .flat { color: var(--flat); }
+
+    .paste-area {
+      display: none;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      background: #fbfcfd;
+    }
+    .paste-area.open { display: grid; gap: 8px; }
+
+    .toast {
+      position: fixed;
+      right: 16px;
+      bottom: 16px;
+      background: #14202c;
+      color: #fff;
+      padding: 10px 12px;
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      opacity: 0;
+      transform: translateY(10px);
+      transition: opacity .16s ease, transform .16s ease;
+      z-index: 50;
+      pointer-events: none;
+      max-width: min(420px, calc(100vw - 32px));
+    }
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    @media (max-width: 1080px) {
+      main {
+        grid-template-columns: 1fr;
+      }
+      .input-panel {
+        position: static;
+        max-height: none;
+      }
+      .summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .details {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 620px) {
+      header {
+        align-items: stretch;
+        flex-direction: column;
+        padding: 12px;
+      }
+      .header-actions {
+        justify-content: stretch;
+      }
+      .header-actions button {
+        flex: 1 1 auto;
+      }
+      main {
+        padding: 10px;
+      }
+      .field-grid,
+      .summary {
+        grid-template-columns: 1fr;
+      }
+      .heatmap {
+        height: 560px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div>
+        <h1>Portfolio Heatmap Builder</h1>
+        <div class="muted">종목·종가/현재가·평단·수량 입력형 보유 히트맵</div>
+      </div>
+      <div class="header-actions">
+        <button id="saveBtn" title="현재 입력값을 이 브라우저에 저장">저장</button>
+        <button id="loadBtn" title="이 브라우저에 저장된 입력값 불러오기">불러오기</button>
+        <button id="exportSvgBtn" title="히트맵을 SVG 이미지로 저장">SVG</button>
+        <button id="exportPngBtn" class="primary" title="히트맵을 PNG 이미지로 저장">PNG</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="panel input-panel" aria-label="입력">
+        <div class="panel-head">
+          <h2>입력</h2>
+          <span class="muted" id="rowCount">0종목</span>
+        </div>
+
+        <div class="controls">
+          <div class="segmented" role="group" aria-label="크기 기준">
+            <button id="sizeValueBtn" class="active" type="button">평가금액 크기</button>
+            <button id="sizeEqualBtn" type="button">동일 크기</button>
+          </div>
+          <div class="field-grid">
+            <label>
+              통화
+              <select id="currency">
+                <option value="KRW">원화</option>
+                <option value="USD">달러</option>
+                <option value="JPY">엔화</option>
+              </select>
+            </label>
+            <label>
+              색상 기준
+              <select id="colorMetric">
+                <option value="return">수익률</option>
+                <option value="daily">오늘 등락률</option>
+              </select>
+            </label>
+          </div>
+          <div class="button-row">
+            <button id="addRowBtn" class="primary" type="button">+ 종목</button>
+            <button id="pasteToggleBtn" type="button">CSV 붙여넣기</button>
+            <button id="sampleBtn" type="button">샘플</button>
+            <button id="clearBtn" class="danger" type="button">초기화</button>
+          </div>
+        </div>
+
+        <div id="pasteArea" class="paste-area">
+          <label>
+            CSV/엑셀 붙여넣기
+            <textarea id="pasteBox" spellcheck="false" placeholder="종목,코드,테마,종가/현재가,평단,수량,오늘등락률&#10;삼성전자,005930,반도체,75000,68000,10,1.2"></textarea>
+          </label>
+          <div class="button-row">
+            <button id="applyPasteBtn" class="primary" type="button">반영</button>
+            <button id="closePasteBtn" type="button">닫기</button>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th class="col-name">종목</th>
+                <th class="col-symbol">코드</th>
+                <th class="col-theme">테마</th>
+                <th class="col-num">종가/현재가</th>
+                <th class="col-num">평단</th>
+                <th class="col-num">수량</th>
+                <th class="col-num">등락%</th>
+                <th class="col-action"></th>
+              </tr>
+            </thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+
+        <div class="input-footer">
+          <span class="muted">종가/현재가 없으면 수익률 계산불가</span>
+          <button id="recalcBtn" type="button">다시 계산</button>
+        </div>
+      </section>
+
+      <section class="view">
+        <div class="summary" aria-label="요약">
+          <div class="metric">
+            <div class="label">총 평가금액</div>
+            <div class="value" id="totalValue">-</div>
+            <div class="sub" id="totalCost">매입금액 -</div>
+          </div>
+          <div class="metric">
+            <div class="label">총 손익</div>
+            <div class="value" id="totalPnl">-</div>
+            <div class="sub" id="totalReturn">수익률 -</div>
+          </div>
+          <div class="metric">
+            <div class="label">상승 / 하락 / 보합</div>
+            <div class="value" id="directionCount">-</div>
+            <div class="sub">선택 색상 기준</div>
+          </div>
+          <div class="metric">
+            <div class="label">최대 비중</div>
+            <div class="value" id="largestWeight">-</div>
+            <div class="sub" id="largestName">-</div>
+          </div>
+        </div>
+
+        <section class="panel heatmap-panel" aria-label="히트맵">
+          <div class="heatmap-toolbar">
+            <h2>히트맵</h2>
+            <div class="legend">
+              <span><span class="swatch" style="background:#c9352b"></span> 상승/수익</span>
+              <span><span class="swatch" style="background:#7f8790"></span> 보합</span>
+              <span><span class="swatch" style="background:#2369c9"></span> 하락/손실</span>
+            </div>
+          </div>
+          <div id="heatmap" class="heatmap"></div>
+        </section>
+
+        <div class="details">
+          <section class="panel">
+            <div class="panel-head">
+              <h2>상위 비중</h2>
+              <span class="muted">평가금액 기준</span>
+            </div>
+            <div id="weightList" class="rank-list"></div>
+          </section>
+          <section class="panel">
+            <div class="panel-head">
+              <h2>손익률 순위</h2>
+              <span class="muted">평단 입력 종목</span>
+            </div>
+            <div id="returnList" class="rank-list"></div>
+          </section>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    const storageKey = "portfolioHeatmapBuilder.v1";
+    const defaultRows = [
+      { name: "삼성전자", symbol: "005930", theme: "반도체", price: 75000, avg: 68000, qty: 20, daily: 1.2 },
+      { name: "SK하이닉스", symbol: "000660", theme: "HBM", price: 210500, avg: 144000, qty: 8, daily: 2.6 },
+      { name: "테슬라", symbol: "TSLA", theme: "미국 빅테크", price: 180.5, avg: 102.4, qty: 15, daily: -3.8 },
+      { name: "엔비디아", symbol: "NVDA", theme: "AI 인프라", price: 146.2, avg: 112.8, qty: 12, daily: -1.4 },
+      { name: "히타치", symbol: "6501", theme: "전력·원자력", price: 3985, avg: 4400, qty: 100, daily: -2.7 },
+      { name: "오라클", symbol: "ORCL", theme: "AI 인프라", price: 152.7, avg: 126.5, qty: 10, daily: 0.4 }
+    ];
+
+    let rows = cloneRows(defaultRows);
+    let sizeMode = "value";
+
+    const el = {
+      rows: document.getElementById("rows"),
+      rowCount: document.getElementById("rowCount"),
+      currency: document.getElementById("currency"),
+      colorMetric: document.getElementById("colorMetric"),
+      heatmap: document.getElementById("heatmap"),
+      totalValue: document.getElementById("totalValue"),
+      totalCost: document.getElementById("totalCost"),
+      totalPnl: document.getElementById("totalPnl"),
+      totalReturn: document.getElementById("totalReturn"),
+      directionCount: document.getElementById("directionCount"),
+      largestWeight: document.getElementById("largestWeight"),
+      largestName: document.getElementById("largestName"),
+      weightList: document.getElementById("weightList"),
+      returnList: document.getElementById("returnList"),
+      toast: document.getElementById("toast"),
+      pasteArea: document.getElementById("pasteArea"),
+      pasteBox: document.getElementById("pasteBox"),
+      sizeValueBtn: document.getElementById("sizeValueBtn"),
+      sizeEqualBtn: document.getElementById("sizeEqualBtn")
+    };
+
+    function parseNumber(value) {
+      if (value === null || value === undefined) return 0;
+      const cleaned = String(value).replace(/[,\s₩$¥%]/g, "").trim();
+      if (!cleaned) return 0;
+      const n = Number(cleaned);
+      return Number.isFinite(n) ? n : 0;
+    }
+
+    function formatMoney(value) {
+      const currency = el.currency.value;
+      const abs = Math.abs(value);
+      if (currency === "KRW") {
+        if (abs >= 100000000) return `${(value / 100000000).toFixed(1)}억`;
+        if (abs >= 10000) return `${Math.round(value / 10000).toLocaleString("ko-KR")}만`;
+        return `${Math.round(value).toLocaleString("ko-KR")}원`;
+      }
+      const symbol = currency === "USD" ? "$" : "¥";
+      if (abs >= 1000000) return `${symbol}${(value / 1000000).toFixed(2)}M`;
+      if (abs >= 1000) return `${symbol}${(value / 1000).toFixed(1)}K`;
+      return `${symbol}${value.toLocaleString("ko-KR", { maximumFractionDigits: 2 })}`;
+    }
+
+    function formatPct(value) {
+      if (!Number.isFinite(value)) return "-";
+      const sign = value > 0 ? "+" : "";
+      return `${sign}${value.toFixed(2)}%`;
+    }
+
+    function classFor(value) {
+      if (!Number.isFinite(value)) return "flat";
+      if (value > 0.005) return "positive";
+      if (value < -0.005) return "negative";
+      return "flat";
+    }
+
+    function colorFor(value) {
+      if (!Number.isFinite(value)) return "#7f8790";
+      const v = Math.max(-40, Math.min(40, Number.isFinite(value) ? value : 0));
+      if (Math.abs(v) < 0.01) return "#7f8790";
+      const t = Math.min(1, Math.abs(v) / 25);
+      if (v > 0) return mix("#8f949b", "#c9352b", .35 + t * .65);
+      return mix("#8f949b", "#2369c9", .35 + t * .65);
+    }
+
+    function mix(a, b, t) {
+      const pa = hex(a), pb = hex(b);
+      const r = Math.round(pa.r + (pb.r - pa.r) * t);
+      const g = Math.round(pa.g + (pb.g - pa.g) * t);
+      const bl = Math.round(pa.b + (pb.b - pa.b) * t);
+      return `rgb(${r},${g},${bl})`;
+    }
+
+    function hex(value) {
+      const s = value.replace("#", "");
+      return {
+        r: parseInt(s.slice(0, 2), 16),
+        g: parseInt(s.slice(2, 4), 16),
+        b: parseInt(s.slice(4, 6), 16)
+      };
+    }
+
+    function normalizedRows() {
+      return rows.map((r, index) => {
+        const price = parseNumber(r.price);
+        const avg = parseNumber(r.avg);
+        const qty = parseNumber(r.qty);
+        const daily = parseNumber(r.daily);
+        const hasMarketPrice = price > 0;
+        const markPrice = price > 0 ? price : avg;
+        const value = markPrice * qty;
+        const cost = avg > 0 ? avg * qty : 0;
+        const pnl = hasMarketPrice && cost > 0 ? value - cost : NaN;
+        const ret = hasMarketPrice && cost > 0 ? (pnl / cost) * 100 : NaN;
+        return {
+          ...r,
+          index,
+          name: (r.name || "").trim() || "이름 없음",
+          symbol: (r.symbol || "").trim(),
+          theme: (r.theme || "").trim() || "기타",
+          price,
+          avg,
+          qty,
+          hasMarketPrice,
+          markPrice,
+          daily,
+          value,
+          cost,
+          pnl,
+          returnPct: ret
+        };
+      }).filter(r => r.qty > 0 && (r.price > 0 || r.avg > 0));
+    }
+
+    function renderInputs() {
+      el.rows.innerHTML = "";
+      rows.forEach((row, index) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td><input value="${escapeAttr(row.name || "")}" data-index="${index}" data-key="name" aria-label="종목명"></td>
+          <td><input value="${escapeAttr(row.symbol || "")}" data-index="${index}" data-key="symbol" aria-label="코드"></td>
+          <td><input value="${escapeAttr(row.theme || "")}" data-index="${index}" data-key="theme" aria-label="테마"></td>
+          <td><input inputmode="decimal" value="${escapeAttr(row.price ?? "")}" data-index="${index}" data-key="price" aria-label="종가 또는 현재가"></td>
+          <td><input inputmode="decimal" value="${escapeAttr(row.avg ?? "")}" data-index="${index}" data-key="avg" aria-label="평단"></td>
+          <td><input inputmode="decimal" value="${escapeAttr(row.qty ?? "")}" data-index="${index}" data-key="qty" aria-label="수량"></td>
+          <td><input inputmode="decimal" value="${escapeAttr(row.daily ?? "")}" data-index="${index}" data-key="daily" aria-label="오늘 등락률"></td>
+          <td><button class="icon danger" type="button" data-remove="${index}" title="삭제">×</button></td>
+        `;
+        el.rows.appendChild(tr);
+      });
+      el.rowCount.textContent = `${rows.length}종목`;
+    }
+
+    function escapeAttr(value) {
+      return String(value).replaceAll("&", "&amp;").replaceAll('"', "&quot;").replaceAll("<", "&lt;");
+    }
+
+    function renderAll() {
+      renderInputs();
+      renderSummary();
+      renderHeatmap();
+      renderLists();
+    }
+
+    function renderSummary() {
+      const data = normalizedRows();
+      const totalValue = data.reduce((sum, r) => sum + r.value, 0);
+      const calculable = data.filter(r => r.hasMarketPrice && r.cost > 0);
+      const totalCost = calculable.reduce((sum, r) => sum + r.cost, 0);
+      const calculableValue = calculable.reduce((sum, r) => sum + r.value, 0);
+      const totalPnl = totalCost > 0 ? calculableValue - totalCost : NaN;
+      const totalReturn = totalCost > 0 ? (totalPnl / totalCost) * 100 : NaN;
+      const metricKey = el.colorMetric.value === "daily" ? "daily" : "returnPct";
+      const metricRows = data.filter(r => Number.isFinite(r[metricKey]));
+      const up = metricRows.filter(r => r[metricKey] > .005).length;
+      const down = metricRows.filter(r => r[metricKey] < -.005).length;
+      const flat = metricRows.length - up - down;
+      const noData = data.length - metricRows.length;
+      const largest = data.slice().sort((a, b) => b.value - a.value)[0];
+
+      el.totalValue.textContent = formatMoney(totalValue);
+      el.totalCost.textContent = `수익률 계산 가능 ${calculable.length}/${data.length}종목`;
+      el.totalPnl.textContent = Number.isFinite(totalPnl) ? formatMoney(totalPnl) : "-";
+      el.totalPnl.className = `value ${classFor(totalPnl)}`;
+      el.totalReturn.textContent = `수익률 ${formatPct(totalReturn)}`;
+      el.directionCount.textContent = noData ? `${up} / ${down} / ${flat} · 미계산 ${noData}` : `${up} / ${down} / ${flat}`;
+      el.largestWeight.textContent = largest && totalValue > 0 ? `${((largest.value / totalValue) * 100).toFixed(1)}%` : "-";
+      el.largestName.textContent = largest ? `${largest.name}${largest.symbol ? ` (${largest.symbol})` : ""}` : "-";
+    }
+
+    function renderLists() {
+      const data = normalizedRows();
+      const totalValue = data.reduce((sum, r) => sum + r.value, 0);
+      const weightRows = data.slice().sort((a, b) => b.value - a.value).slice(0, 8);
+      const returnRows = data.filter(r => r.hasMarketPrice && r.cost > 0).sort((a, b) => b.returnPct - a.returnPct).slice(0, 8);
+      el.weightList.innerHTML = weightRows.length ? weightRows.map(r => `
+        <div class="rank-item">
+          <div>
+            <div class="rank-name">${escapeHtml(r.name)} ${r.symbol ? `<span class="rank-meta">${escapeHtml(r.symbol)}</span>` : ""}</div>
+            <div class="rank-meta">${escapeHtml(r.theme)} · ${formatMoney(r.value)}</div>
+          </div>
+          <strong>${totalValue > 0 ? ((r.value / totalValue) * 100).toFixed(1) : "0.0"}%</strong>
+        </div>
+      `).join("") : `<div class="muted">입력된 보유 종목이 없습니다.</div>`;
+      el.returnList.innerHTML = returnRows.length ? returnRows.map(r => `
+        <div class="rank-item">
+          <div>
+            <div class="rank-name">${escapeHtml(r.name)} ${r.symbol ? `<span class="rank-meta">${escapeHtml(r.symbol)}</span>` : ""}</div>
+            <div class="rank-meta">손익 ${Number.isFinite(r.pnl) ? formatMoney(r.pnl) : "-"} · ${formatMoney(r.value)}</div>
+          </div>
+          <strong class="${classFor(r.returnPct)}">${formatPct(r.returnPct)}</strong>
+        </div>
+      `).join("") : `<div class="muted">평단이 입력된 종목이 없습니다.</div>`;
+    }
+
+    function escapeHtml(value) {
+      return String(value).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+    }
+
+    function renderHeatmap() {
+      const data = normalizedRows();
+      const width = el.heatmap.clientWidth || 900;
+      const height = el.heatmap.clientHeight || 560;
+      el.heatmap.innerHTML = "";
+      if (!data.length) {
+        el.heatmap.innerHTML = `<div class="empty">종목을 입력하면 히트맵이 표시됩니다.</div>`;
+        return;
+      }
+      const values = data.map(r => sizeMode === "equal" ? 1 : Math.max(r.value, 1));
+      const rects = squarify(values, 0, 0, width, height);
+      const metricKey = el.colorMetric.value === "daily" ? "daily" : "returnPct";
+      const totalValue = data.reduce((sum, r) => sum + r.value, 0);
+      data.forEach((r, i) => {
+        const rect = rects[i];
+        const tile = document.createElement("div");
+        tile.className = `tile ${rect.w * rect.h < 7600 ? "tiny" : ""}`;
+        tile.style.left = `${rect.x}px`;
+        tile.style.top = `${rect.y}px`;
+        tile.style.width = `${rect.w}px`;
+        tile.style.height = `${rect.h}px`;
+        tile.style.background = colorFor(r[metricKey]);
+        tile.title = `${r.name}${r.symbol ? ` (${r.symbol})` : ""}\n평가금액 ${formatMoney(r.value)}\n평단 ${r.avg || "-"} / 수량 ${r.qty}\n수익률 ${formatPct(r.returnPct)} / 등락률 ${formatPct(r.daily)}`;
+        const weight = totalValue > 0 ? (r.value / totalValue) * 100 : 0;
+        tile.innerHTML = `
+          <div class="name">${escapeHtml(r.name)}</div>
+          <div class="symbol">${escapeHtml(r.symbol || r.theme)}</div>
+          <div class="rate">${formatPct(r[metricKey])}</div>
+          <div class="money">${formatMoney(r.value)} · ${weight.toFixed(1)}%</div>
+          <div class="qty">평단 ${compactNumber(r.avg)} · ${compactNumber(r.qty)}주</div>
+        `;
+        el.heatmap.appendChild(tile);
+      });
+    }
+
+    function compactNumber(value) {
+      const n = parseNumber(value);
+      if (!n) return "-";
+      return n.toLocaleString("ko-KR", { maximumFractionDigits: 2 });
+    }
+
+    function squarify(values, x, y, w, h) {
+      const total = values.reduce((sum, v) => sum + Math.max(v, 0), 0);
+      if (total <= 0) return [];
+      const area = w * h;
+      const items = values.map((v, i) => ({ i, area: Math.max(v, 0) / total * area }))
+        .sort((a, b) => b.area - a.area);
+      const rects = Array(values.length);
+      layout(items, x, y, w, h, rects);
+      return rects;
+    }
+
+    function layout(items, x, y, w, h, rects) {
+      let row = [];
+      let rest = items.slice();
+      while (rest.length) {
+        const item = rest[0];
+        const side = Math.min(w, h);
+        if (!row.length || worst(row.concat(item), side) <= worst(row, side)) {
+          row.push(item);
+          rest.shift();
+        } else {
+          const used = placeRow(row, x, y, w, h, rects);
+          x = used.x; y = used.y; w = used.w; h = used.h;
+          row = [];
+        }
+      }
+      if (row.length) placeRow(row, x, y, w, h, rects);
+    }
+
+    function worst(row, side) {
+      if (!row.length) return Infinity;
+      const sum = row.reduce((s, it) => s + it.area, 0);
+      const max = Math.max(...row.map(it => it.area));
+      const min = Math.min(...row.map(it => it.area));
+      return Math.max((side * side * max) / (sum * sum), (sum * sum) / (side * side * min));
+    }
+
+    function placeRow(row, x, y, w, h, rects) {
+      const sum = row.reduce((s, it) => s + it.area, 0);
+      if (w >= h) {
+        const rowH = sum / w;
+        let cx = x;
+        row.forEach(it => {
+          const rw = it.area / rowH;
+          rects[it.i] = { x: cx, y, w: rw, h: rowH };
+          cx += rw;
+        });
+        return { x, y: y + rowH, w, h: Math.max(0, h - rowH) };
+      }
+      const rowW = sum / h;
+      let cy = y;
+      row.forEach(it => {
+        const rh = it.area / rowW;
+        rects[it.i] = { x, y: cy, w: rowW, h: rh };
+        cy += rh;
+      });
+      return { x: x + rowW, y, w: Math.max(0, w - rowW), h };
+    }
+
+    function parsePasted(text) {
+      const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+      if (!lines.length) return [];
+      const hasHeader = /종목|name|symbol|코드|현재|평단|수량/i.test(lines[0]);
+      const body = hasHeader ? lines.slice(1) : lines;
+      return body.map(line => splitCsvLine(line)).filter(cols => cols.length >= 3).map(cols => ({
+        name: cols[0] || "",
+        symbol: cols[1] || "",
+        theme: cols[2] || "기타",
+        price: parseNumber(cols[3]),
+        avg: parseNumber(cols[4]),
+        qty: parseNumber(cols[5]),
+        daily: parseNumber(cols[6])
+      }));
+    }
+
+    function splitCsvLine(line) {
+      if (line.includes("\t")) return line.split("\t").map(s => s.trim());
+      const out = [];
+      let cur = "";
+      let quote = false;
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (ch === '"') {
+          quote = !quote;
+        } else if (ch === "," && !quote) {
+          out.push(cur.trim());
+          cur = "";
+        } else {
+          cur += ch;
+        }
+      }
+      out.push(cur.trim());
+      return out;
+    }
+
+    function makeSvg() {
+      const data = normalizedRows();
+      const width = 1280;
+      const height = 760;
+      const chartY = 92;
+      const chartH = height - chartY - 44;
+      const values = data.map(r => sizeMode === "equal" ? 1 : Math.max(r.value, 1));
+      const rects = squarify(values, 24, chartY, width - 48, chartH);
+      const metricKey = el.colorMetric.value === "daily" ? "daily" : "returnPct";
+      const totalValue = data.reduce((sum, r) => sum + r.value, 0);
+      const tiles = data.map((r, i) => {
+        const rect = rects[i];
+        const small = rect.w * rect.h < 8500;
+        const label = escapeXml(r.name);
+        const symbol = escapeXml(r.symbol || r.theme);
+        const rate = formatPct(r[metricKey]);
+        const money = formatMoney(r.value);
+        const weight = totalValue > 0 ? `${((r.value / totalValue) * 100).toFixed(1)}%` : "0.0%";
+        return `
+          <g>
+            <rect x="${rect.x.toFixed(1)}" y="${rect.y.toFixed(1)}" width="${Math.max(0, rect.w - 2).toFixed(1)}" height="${Math.max(0, rect.h - 2).toFixed(1)}" rx="7" fill="${colorFor(r[metricKey])}" stroke="#ffffff" stroke-width="2"/>
+            <text x="${(rect.x + 9).toFixed(1)}" y="${(rect.y + 22).toFixed(1)}" fill="#fff" font-size="${small ? 13 : 18}" font-weight="750">${label}</text>
+            ${small ? "" : `<text x="${(rect.x + 9).toFixed(1)}" y="${(rect.y + 43).toFixed(1)}" fill="#fff" font-size="13">${symbol}</text>`}
+            <text x="${(rect.x + 9).toFixed(1)}" y="${(rect.y + (small ? 42 : 72)).toFixed(1)}" fill="#fff" font-size="${small ? 16 : 26}" font-weight="800">${rate}</text>
+            ${small ? "" : `<text x="${(rect.x + 9).toFixed(1)}" y="${(rect.y + 96).toFixed(1)}" fill="#fff" font-size="13">${money} · ${weight}</text>`}
+          </g>`;
+      }).join("");
+      return `<?xml version="1.0" encoding="UTF-8"?>
+        <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+          <rect width="100%" height="100%" fill="#f5f7fa"/>
+          <text x="24" y="38" fill="#16202a" font-size="28" font-weight="800">Portfolio Heatmap</text>
+          <text x="24" y="66" fill="#6b7785" font-size="16">총 평가금액 ${escapeXml(formatMoney(totalValue))} · 크기 ${sizeMode === "equal" ? "동일" : "평가금액"} · 색 ${el.colorMetric.value === "daily" ? "오늘 등락률" : "수익률"}</text>
+          ${tiles}
+        </svg>`;
+    }
+
+    function escapeXml(value) {
+      return String(value).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
+    }
+
+    function download(filename, blob) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function exportSvg() {
+      download("portfolio-heatmap.svg", new Blob([makeSvg()], { type: "image/svg+xml;charset=utf-8" }));
+      toast("SVG로 저장했습니다.");
+    }
+
+    function exportPng() {
+      const svg = makeSvg();
+      const img = new Image();
+      const url = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml;charset=utf-8" }));
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = 1280;
+        canvas.height = 760;
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#f5f7fa";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0);
+        canvas.toBlob(blob => {
+          if (blob) download("portfolio-heatmap.png", blob);
+          URL.revokeObjectURL(url);
+          toast("PNG로 저장했습니다.");
+        }, "image/png");
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        toast("PNG 저장에 실패했습니다. SVG 저장을 사용하세요.");
+      };
+      img.src = url;
+    }
+
+    function toast(message) {
+      el.toast.textContent = message;
+      el.toast.classList.add("show");
+      window.clearTimeout(toast.timer);
+      toast.timer = window.setTimeout(() => el.toast.classList.remove("show"), 1800);
+    }
+
+    function save() {
+      localStorage.setItem(storageKey, JSON.stringify({
+        rows,
+        currency: el.currency.value,
+        colorMetric: el.colorMetric.value,
+        sizeMode
+      }));
+      toast("저장했습니다.");
+    }
+
+    function load() {
+      const raw = localStorage.getItem(storageKey);
+      if (!raw) {
+        toast("저장된 입력값이 없습니다.");
+        return;
+      }
+      try {
+        const data = JSON.parse(raw);
+        rows = Array.isArray(data.rows) ? data.rows : cloneRows(defaultRows);
+        el.currency.value = data.currency || "KRW";
+        el.colorMetric.value = data.colorMetric || "return";
+        setSizeMode(data.sizeMode || "value");
+        renderAll();
+        toast("불러왔습니다.");
+      } catch {
+        toast("저장값을 읽지 못했습니다.");
+      }
+    }
+
+    function setSizeMode(mode) {
+      sizeMode = mode === "equal" ? "equal" : "value";
+      el.sizeValueBtn.classList.toggle("active", sizeMode === "value");
+      el.sizeEqualBtn.classList.toggle("active", sizeMode === "equal");
+      renderSummary();
+      renderHeatmap();
+    }
+
+    el.rows.addEventListener("input", event => {
+      const target = event.target;
+      if (!target.matches("input")) return;
+      const index = Number(target.dataset.index);
+      const key = target.dataset.key;
+      rows[index][key] = target.value;
+      renderSummary();
+      renderHeatmap();
+      renderLists();
+    });
+
+    el.rows.addEventListener("click", event => {
+      const btn = event.target.closest("[data-remove]");
+      if (!btn) return;
+      const index = Number(btn.dataset.remove);
+      rows.splice(index, 1);
+      renderAll();
+    });
+
+    document.getElementById("addRowBtn").addEventListener("click", () => {
+      rows.push({ name: "", symbol: "", theme: "", price: "", avg: "", qty: "", daily: "" });
+      renderAll();
+      const last = el.rows.querySelector("tr:last-child input");
+      if (last) last.focus();
+    });
+
+    document.getElementById("clearBtn").addEventListener("click", () => {
+      if (!confirm("입력한 종목을 모두 지울까요?")) return;
+      rows = [];
+      renderAll();
+    });
+
+    document.getElementById("sampleBtn").addEventListener("click", () => {
+      rows = cloneRows(defaultRows);
+      renderAll();
+      toast("샘플을 넣었습니다.");
+    });
+
+    document.getElementById("recalcBtn").addEventListener("click", renderAll);
+    document.getElementById("saveBtn").addEventListener("click", save);
+    document.getElementById("loadBtn").addEventListener("click", load);
+    document.getElementById("exportSvgBtn").addEventListener("click", exportSvg);
+    document.getElementById("exportPngBtn").addEventListener("click", exportPng);
+    document.getElementById("pasteToggleBtn").addEventListener("click", () => el.pasteArea.classList.toggle("open"));
+    document.getElementById("closePasteBtn").addEventListener("click", () => el.pasteArea.classList.remove("open"));
+    document.getElementById("applyPasteBtn").addEventListener("click", () => {
+      const parsed = parsePasted(el.pasteBox.value);
+      if (!parsed.length) {
+        toast("붙여넣을 행을 찾지 못했습니다.");
+        return;
+      }
+      rows = parsed;
+      el.pasteArea.classList.remove("open");
+      renderAll();
+      toast(`${parsed.length}종목을 반영했습니다.`);
+    });
+    el.currency.addEventListener("change", renderAll);
+    el.colorMetric.addEventListener("change", renderAll);
+    el.sizeValueBtn.addEventListener("click", () => setSizeMode("value"));
+    el.sizeEqualBtn.addEventListener("click", () => setSizeMode("equal"));
+    window.addEventListener("resize", () => window.requestAnimationFrame(renderHeatmap));
+
+    function cloneRows(value) {
+      return JSON.parse(JSON.stringify(value));
+    }
+
+    renderAll();
+  </script>
+</body>
+</html>
