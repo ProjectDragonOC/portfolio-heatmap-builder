@@ -669,10 +669,10 @@
     const defaultRows = [
       { name: "삼성전자", symbol: "005930", theme: "반도체", price: 75000, avg: 68000, qty: 20, daily: 1.2 },
       { name: "SK하이닉스", symbol: "000660", theme: "HBM", price: 210500, avg: 144000, qty: 8, daily: 2.6 },
-      { name: "테슬라", symbol: "TSLA", theme: "미국 빅테크", price: 180.5, avg: 102.4, qty: 15, daily: -3.8 },
-      { name: "엔비디아", symbol: "NVDA", theme: "AI 인프라", price: 146.2, avg: 112.8, qty: 12, daily: -1.4 },
-      { name: "히타치", symbol: "6501", theme: "전력·원자력", price: 3985, avg: 4400, qty: 100, daily: -2.7 },
-      { name: "오라클", symbol: "ORCL", theme: "AI 인프라", price: 152.7, avg: 126.5, qty: 10, daily: 0.4 }
+      { name: "현대차", symbol: "005380", theme: "자동차", price: 221000, avg: 238000, qty: 5, daily: -0.8 },
+      { name: "NAVER", symbol: "035420", theme: "인터넷", price: 198000, avg: 177000, qty: 4, daily: 0.4 },
+      { name: "삼성바이오로직스", symbol: "207940", theme: "바이오", price: 930000, avg: 890000, qty: 1, daily: 1.6 },
+      { name: "한화오션", symbol: "042660", theme: "조선", price: 82000, avg: 65000, qty: 8, daily: -1.1 }
     ];
 
     let rows = cloneRows(defaultRows);
@@ -1017,7 +1017,7 @@
     function makeSvg() {
       const data = normalizedRows();
       const width = 1280;
-      const height = 760;
+      const height = Math.max(760, Math.min(1200, 640 + Math.ceil(data.length / 4) * 80));
       const chartY = 92;
       const chartH = height - chartY - 44;
       const values = data.map(r => sizeMode === "equal" ? 1 : Math.max(r.value, 1));
@@ -1026,19 +1026,27 @@
       const totalValue = data.reduce((sum, r) => sum + r.value, 0);
       const tiles = data.map((r, i) => {
         const rect = rects[i];
-        const small = rect.w * rect.h < 8500;
+        const area = rect.w * rect.h;
+        const tiny = area < 8500 || rect.w < 88 || rect.h < 58;
+        const compact = !tiny && (area < 24000 || rect.w < 150 || rect.h < 92);
         const label = escapeXml(r.name);
         const symbol = escapeXml(r.symbol || r.theme);
         const rate = formatPct(r[metricKey]);
         const money = formatMoney(r.value);
         const weight = totalValue > 0 ? `${((r.value / totalValue) * 100).toFixed(1)}%` : "0.0%";
+        const nameSize = tiny ? 11 : compact ? 13 : 18;
+        const rateSize = compact ? 16 : 26;
+        const nameY = rect.y + (tiny ? 18 : 22);
+        const symbolY = rect.y + 43;
+        const rateY = rect.y + (compact ? 62 : 72);
+        const moneyY = rect.y + (compact ? 82 : 96);
         return `
           <g>
             <rect x="${rect.x.toFixed(1)}" y="${rect.y.toFixed(1)}" width="${Math.max(0, rect.w - 2).toFixed(1)}" height="${Math.max(0, rect.h - 2).toFixed(1)}" rx="7" fill="${colorFor(r[metricKey])}" stroke="#ffffff" stroke-width="2"/>
-            <text x="${(rect.x + 9).toFixed(1)}" y="${(rect.y + 22).toFixed(1)}" fill="#fff" font-size="${small ? 13 : 18}" font-weight="750">${label}</text>
-            ${small ? "" : `<text x="${(rect.x + 9).toFixed(1)}" y="${(rect.y + 43).toFixed(1)}" fill="#fff" font-size="13">${symbol}</text>`}
-            <text x="${(rect.x + 9).toFixed(1)}" y="${(rect.y + (small ? 42 : 72)).toFixed(1)}" fill="#fff" font-size="${small ? 16 : 26}" font-weight="800">${rate}</text>
-            ${small ? "" : `<text x="${(rect.x + 9).toFixed(1)}" y="${(rect.y + 96).toFixed(1)}" fill="#fff" font-size="13">${money} · ${weight}</text>`}
+            <text x="${(rect.x + 9).toFixed(1)}" y="${nameY.toFixed(1)}" fill="#fff" font-size="${nameSize}" font-weight="750">${label}</text>
+            ${tiny || rect.h < 82 ? "" : `<text x="${(rect.x + 9).toFixed(1)}" y="${symbolY.toFixed(1)}" fill="#fff" font-size="13">${symbol}</text>`}
+            ${rect.h < 54 ? "" : `<text x="${(rect.x + 9).toFixed(1)}" y="${rateY.toFixed(1)}" fill="#fff" font-size="${rateSize}" font-weight="800">${rate}</text>`}
+            ${tiny || rect.h < 100 ? "" : `<text x="${(rect.x + 9).toFixed(1)}" y="${moneyY.toFixed(1)}" fill="#fff" font-size="13">${money} · ${weight}</text>`}
           </g>`;
       }).join("");
       return `<?xml version="1.0" encoding="UTF-8"?>
