@@ -353,16 +353,43 @@
       position: relative;
       min-height: 420px;
       height: min(66vh, 760px);
-      background: #e7ecf2;
+      background: #101722;
       overflow: hidden;
       border-radius: 0 0 var(--radius) var(--radius);
+      padding: 2px;
+    }
+
+    .heatmap-group {
+      position: absolute;
+      overflow: hidden;
+      background: #172232;
+      border: 1px solid rgba(255,255,255,.18);
+      border-radius: 6px;
+      box-shadow: inset 0 0 0 1px rgba(0,0,0,.35);
+    }
+
+    .group-head {
+      position: absolute;
+      left: 0;
+      top: 0;
+      right: 0;
+      height: 22px;
+      padding: 3px 6px 0;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 750;
+      line-height: 1.2;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      text-shadow: 0 1px 2px rgba(0,0,0,.4);
     }
 
     .tile {
       position: absolute;
-      border: 2px solid #fff;
+      border: 1px solid rgba(255,255,255,.5);
       overflow: hidden;
-      border-radius: 7px;
+      border-radius: 4px;
       color: #fff;
       padding: 8px;
       display: grid;
@@ -668,11 +695,17 @@
     const storageKey = "portfolioHeatmapBuilder.v1";
     const defaultRows = [
       { name: "삼성전자", symbol: "005930", theme: "반도체", price: 75000, avg: 68000, qty: 20, daily: 1.2 },
-      { name: "SK하이닉스", symbol: "000660", theme: "HBM", price: 210500, avg: 144000, qty: 8, daily: 2.6 },
+      { name: "SK하이닉스", symbol: "000660", theme: "반도체", price: 210500, avg: 144000, qty: 8, daily: 2.6 },
+      { name: "한미반도체", symbol: "042700", theme: "HBM 장비", price: 148000, avg: 132000, qty: 7, daily: 3.1 },
+      { name: "이오테크닉스", symbol: "039030", theme: "HBM 장비", price: 185000, avg: 201000, qty: 4, daily: -0.6 },
       { name: "현대차", symbol: "005380", theme: "자동차", price: 221000, avg: 238000, qty: 5, daily: -0.8 },
-      { name: "NAVER", symbol: "035420", theme: "인터넷", price: 198000, avg: 177000, qty: 4, daily: 0.4 },
+      { name: "기아", symbol: "000270", theme: "자동차", price: 118000, avg: 101000, qty: 8, daily: 0.9 },
+      { name: "NAVER", symbol: "035420", theme: "플랫폼", price: 198000, avg: 177000, qty: 4, daily: 0.4 },
+      { name: "카카오", symbol: "035720", theme: "플랫폼", price: 51000, avg: 62000, qty: 12, daily: -1.5 },
       { name: "삼성바이오로직스", symbol: "207940", theme: "바이오", price: 930000, avg: 890000, qty: 1, daily: 1.6 },
-      { name: "한화오션", symbol: "042660", theme: "조선", price: 82000, avg: 65000, qty: 8, daily: -1.1 }
+      { name: "셀트리온", symbol: "068270", theme: "바이오", price: 182000, avg: 175000, qty: 4, daily: 0.2 },
+      { name: "한화오션", symbol: "042660", theme: "조선", price: 82000, avg: 65000, qty: 8, daily: -1.1 },
+      { name: "HD현대중공업", symbol: "329180", theme: "조선", price: 308000, avg: 274000, qty: 2, daily: 2.4 }
     ];
 
     let rows = cloneRows(defaultRows);
@@ -888,13 +921,33 @@
         return;
       }
       const values = data.map(r => sizeMode === "equal" ? 1 : Math.max(r.value, 1));
-      const rects = mosaicLayout(values, 0, 0, width, height);
       const metricKey = el.colorMetric.value === "daily" ? "daily" : "returnPct";
       const totalValue = data.reduce((sum, r) => sum + r.value, 0);
-      data.forEach((r, i) => {
-        const rect = rects[i];
+      const groups = groupedRows(data, metricKey);
+      const groupRects = mosaicLayout(groups.map(group => sizeMode === "equal" ? 1 : Math.max(group.value, 1)), 0, 0, width, height);
+      groups.forEach((group, groupIndex) => {
+        const groupRect = groupRects[groupIndex];
+        const groupEl = document.createElement("div");
+        groupEl.className = "heatmap-group";
+        groupEl.style.left = `${groupRect.x}px`;
+        groupEl.style.top = `${groupRect.y}px`;
+        groupEl.style.width = `${groupRect.w}px`;
+        groupEl.style.height = `${groupRect.h}px`;
+        const headH = groupRect.h < 90 ? 18 : 24;
+        const head = document.createElement("div");
+        head.className = "group-head";
+        head.style.height = `${headH}px`;
+        head.style.background = colorFor(group.metric);
+        head.textContent = `${group.name} · ${formatPct(group.metric)}`;
+        groupEl.appendChild(head);
+
+        const childValues = group.rows.map(r => sizeMode === "equal" ? 1 : Math.max(r.value, 1));
+        const childRects = mosaicLayout(childValues, 2, headH + 2, Math.max(0, groupRect.w - 4), Math.max(0, groupRect.h - headH - 4));
+        group.rows.forEach((r, i) => {
+          const rect = childRects[i];
+          if (!rect) return;
         const tile = document.createElement("div");
-        tile.className = `tile ${rect.w * rect.h < 7600 ? "tiny" : ""}`;
+          tile.className = `tile ${rect.w * rect.h < 7600 || rect.w < 78 || rect.h < 54 ? "tiny" : ""}`;
         tile.style.left = `${rect.x}px`;
         tile.style.top = `${rect.y}px`;
         tile.style.width = `${rect.w}px`;
@@ -909,7 +962,9 @@
           <div class="money">${formatMoney(r.value)} · ${weight.toFixed(1)}%</div>
           <div class="qty">평단 ${compactNumber(r.avg)} · ${compactNumber(r.qty)}주</div>
         `;
-        el.heatmap.appendChild(tile);
+          groupEl.appendChild(tile);
+        });
+        el.heatmap.appendChild(groupEl);
       });
     }
 
@@ -917,6 +972,28 @@
       const n = parseNumber(value);
       if (!n) return "-";
       return n.toLocaleString("ko-KR", { maximumFractionDigits: 2 });
+    }
+
+    function groupedRows(data, metricKey) {
+      const map = new Map();
+      data.forEach(row => {
+        const key = row.theme || "기타";
+        if (!map.has(key)) map.set(key, { name: key, rows: [], value: 0, metric: NaN });
+        const group = map.get(key);
+        group.rows.push(row);
+        group.value += row.value;
+      });
+      return Array.from(map.values()).map(group => ({
+        ...group,
+        metric: weightedMetric(group.rows, metricKey)
+      })).sort((a, b) => b.value - a.value);
+    }
+
+    function weightedMetric(groupRows, metricKey) {
+      const valid = groupRows.filter(row => Number.isFinite(row[metricKey]) && row.value > 0);
+      const total = valid.reduce((sum, row) => sum + row.value, 0);
+      if (total <= 0) return NaN;
+      return valid.reduce((sum, row) => sum + row[metricKey] * row.value, 0) / total;
     }
 
     function mosaicLayout(values, x, y, w, h) {
@@ -1055,43 +1132,65 @@
     function makeSvg() {
       const data = normalizedRows();
       const width = 1280;
-      const height = Math.max(760, Math.min(1200, 640 + Math.ceil(data.length / 4) * 80));
-      const chartY = 92;
+      const height = Math.max(820, Math.min(1280, 660 + Math.ceil(data.length / 4) * 88));
+      const chartY = 104;
       const chartH = height - chartY - 44;
-      const values = data.map(r => sizeMode === "equal" ? 1 : Math.max(r.value, 1));
-      const rects = mosaicLayout(values, 24, chartY, width - 48, chartH);
       const metricKey = el.colorMetric.value === "daily" ? "daily" : "returnPct";
       const totalValue = data.reduce((sum, r) => sum + r.value, 0);
-      const tiles = data.map((r, i) => {
-        const rect = rects[i];
-        const area = rect.w * rect.h;
-        const tiny = area < 8500 || rect.w < 88 || rect.h < 58;
-        const compact = !tiny && (area < 24000 || rect.w < 150 || rect.h < 92);
-        const label = escapeXml(r.name);
-        const symbol = escapeXml(r.symbol || r.theme);
-        const rate = formatPct(r[metricKey]);
-        const money = formatMoney(r.value);
-        const weight = totalValue > 0 ? `${((r.value / totalValue) * 100).toFixed(1)}%` : "0.0%";
-        const nameSize = tiny ? 11 : compact ? 13 : 18;
-        const rateSize = compact ? 16 : 26;
-        const nameY = rect.y + (tiny ? 18 : 22);
-        const symbolY = rect.y + 43;
-        const rateY = rect.y + (compact ? 62 : 72);
-        const moneyY = rect.y + (compact ? 82 : 96);
+      const groups = groupedRows(data, metricKey);
+      const groupRects = mosaicLayout(groups.map(group => sizeMode === "equal" ? 1 : Math.max(group.value, 1)), 24, chartY, width - 48, chartH);
+      const tiles = groups.map((group, groupIndex) => {
+        const groupRect = groupRects[groupIndex];
+        const headH = groupRect.h < 92 ? 22 : 28;
+        const childRects = mosaicLayout(
+          group.rows.map(r => sizeMode === "equal" ? 1 : Math.max(r.value, 1)),
+          groupRect.x + 3,
+          groupRect.y + headH + 3,
+          Math.max(0, groupRect.w - 6),
+          Math.max(0, groupRect.h - headH - 6)
+        );
+        const groupLabel = `${escapeXml(group.name)} · ${escapeXml(formatPct(group.metric))}`;
+        const children = group.rows.map((r, i) => {
+          const rect = childRects[i];
+          if (!rect) return "";
+          const area = rect.w * rect.h;
+          const tiny = area < 9500 || rect.w < 96 || rect.h < 66;
+          const compact = !tiny && (area < 28000 || rect.w < 170 || rect.h < 110);
+          const label = escapeXml(r.name);
+          const symbol = escapeXml(r.symbol || r.theme);
+          const rate = formatPct(r[metricKey]);
+          const money = formatMoney(r.value);
+          const weight = totalValue > 0 ? `${((r.value / totalValue) * 100).toFixed(1)}%` : "0.0%";
+          const nameSize = tiny ? 14 : compact ? 18 : 34;
+          const rateSize = tiny ? 16 : compact ? 22 : 40;
+          const x = rect.x + 10;
+          const nameY = rect.y + (tiny ? 22 : compact ? 28 : 48);
+          const rateY = rect.y + (tiny ? 44 : compact ? 58 : 95);
+          const moneyY = rect.y + (compact ? 84 : 132);
+          return `
+            <g>
+              <rect x="${rect.x.toFixed(1)}" y="${rect.y.toFixed(1)}" width="${Math.max(0, rect.w - 3).toFixed(1)}" height="${Math.max(0, rect.h - 3).toFixed(1)}" rx="4" fill="${colorFor(r[metricKey])}" stroke="#ffffff" stroke-opacity=".45" stroke-width="1"/>
+              <text x="${x.toFixed(1)}" y="${nameY.toFixed(1)}" fill="#fff" font-size="${nameSize}" font-weight="800">${label}</text>
+              ${tiny ? "" : `<text x="${x.toFixed(1)}" y="${(nameY + (compact ? 19 : 28)).toFixed(1)}" fill="#f1f5f9" font-size="${compact ? 12 : 18}">${symbol}</text>`}
+              <text x="${x.toFixed(1)}" y="${rateY.toFixed(1)}" fill="#fff" font-size="${rateSize}" font-weight="850">${rate}</text>
+              ${tiny ? "" : `<text x="${x.toFixed(1)}" y="${moneyY.toFixed(1)}" fill="#fff" font-size="${compact ? 14 : 24}">${money} · ${weight}</text>`}
+            </g>`;
+        }).join("");
         return `
           <g>
-            <rect x="${rect.x.toFixed(1)}" y="${rect.y.toFixed(1)}" width="${Math.max(0, rect.w - 2).toFixed(1)}" height="${Math.max(0, rect.h - 2).toFixed(1)}" rx="7" fill="${colorFor(r[metricKey])}" stroke="#ffffff" stroke-width="2"/>
-            <text x="${(rect.x + 9).toFixed(1)}" y="${nameY.toFixed(1)}" fill="#fff" font-size="${nameSize}" font-weight="750">${label}</text>
-            ${tiny || rect.h < 82 ? "" : `<text x="${(rect.x + 9).toFixed(1)}" y="${symbolY.toFixed(1)}" fill="#fff" font-size="13">${symbol}</text>`}
-            ${rect.h < 54 ? "" : `<text x="${(rect.x + 9).toFixed(1)}" y="${rateY.toFixed(1)}" fill="#fff" font-size="${rateSize}" font-weight="800">${rate}</text>`}
-            ${tiny || rect.h < 100 ? "" : `<text x="${(rect.x + 9).toFixed(1)}" y="${moneyY.toFixed(1)}" fill="#fff" font-size="13">${money} · ${weight}</text>`}
+            <rect x="${groupRect.x.toFixed(1)}" y="${groupRect.y.toFixed(1)}" width="${Math.max(0, groupRect.w - 2).toFixed(1)}" height="${Math.max(0, groupRect.h - 2).toFixed(1)}" rx="6" fill="#172232" stroke="#ffffff" stroke-opacity=".22" stroke-width="1"/>
+            <rect x="${groupRect.x.toFixed(1)}" y="${groupRect.y.toFixed(1)}" width="${Math.max(0, groupRect.w - 2).toFixed(1)}" height="${headH}" rx="5" fill="${colorFor(group.metric)}"/>
+            <text x="${(groupRect.x + 8).toFixed(1)}" y="${(groupRect.y + headH - 8).toFixed(1)}" fill="#fff" font-size="12" font-weight="800">${groupLabel}</text>
+            ${children}
           </g>`;
       }).join("");
       return `<?xml version="1.0" encoding="UTF-8"?>
         <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
-          <rect width="100%" height="100%" fill="#f5f7fa"/>
-          <text x="24" y="38" fill="#16202a" font-size="28" font-weight="800">포트폴리오 히트맵</text>
-          <text x="24" y="66" fill="#6b7785" font-size="16">총 평가금액 ${escapeXml(formatMoney(totalValue))} · 크기 ${sizeMode === "equal" ? "동일" : "평가금액"} · 색 ${el.colorMetric.value === "daily" ? "오늘 등락률" : "수익률"}</text>
+          <rect width="100%" height="100%" fill="#101722"/>
+          <text x="24" y="38" fill="#ffffff" font-size="28" font-weight="850">포트폴리오 히트맵</text>
+          <text x="24" y="66" fill="#aab6c5" font-size="15">총 평가금액 ${escapeXml(formatMoney(totalValue))} · 크기 ${sizeMode === "equal" ? "동일" : "평가금액"} · 색 ${el.colorMetric.value === "daily" ? "오늘 등락률" : "수익률"}</text>
+          <text x="${width - 24}" y="42" fill="#ffffff" font-size="18" font-weight="800" text-anchor="end">${escapeXml(formatMoney(totalValue))}</text>
+          <text x="${width - 24}" y="66" fill="#aab6c5" font-size="12" text-anchor="end">${data.length}종목 · ${groups.length}테마</text>
           ${tiles}
         </svg>`;
     }
