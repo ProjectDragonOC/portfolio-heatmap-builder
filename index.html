@@ -551,7 +551,7 @@
     <header>
       <div>
         <h1>포트폴리오 히트맵 빌더</h1>
-        <div class="muted">종목·종가/현재가·평단·수량 입력형 보유 히트맵</div>
+      <div class="muted">브리핑 히트맵 기준: 시장·테마·평가금액·등락률·수익률 입력형 맵</div>
       </div>
       <div class="header-actions">
         <button id="saveBtn" title="현재 입력값을 이 브라우저에 저장">저장</button>
@@ -575,8 +575,9 @@
           </div>
           <div class="field-grid">
             <label>
-              통화
+              표시 통화
               <select id="currency">
+                <option value="AUTO">시장별 자동</option>
                 <option value="KRW">원화</option>
                 <option value="USD">달러</option>
                 <option value="JPY">엔화</option>
@@ -585,8 +586,8 @@
             <label>
               색상 기준
               <select id="colorMetric">
-                <option value="return">수익률</option>
                 <option value="daily">오늘 등락률</option>
+                <option value="return">수익률</option>
               </select>
             </label>
           </div>
@@ -601,7 +602,7 @@
         <div id="pasteArea" class="paste-area">
           <label>
             CSV/엑셀 붙여넣기
-            <textarea id="pasteBox" spellcheck="false" placeholder="종목,코드,테마,종가/현재가,평단,수량,오늘등락률&#10;삼성전자,005930,반도체,75000,68000,10,1.2"></textarea>
+            <textarea id="pasteBox" spellcheck="false" placeholder="종목,코드,시장,테마,종가/현재가,평단,수량,오늘등락률&#10;삼성전자,005930,KR,반도체,75000,68000,10,1.2"></textarea>
           </label>
           <div class="button-row">
             <button id="applyPasteBtn" class="primary" type="button">반영</button>
@@ -615,6 +616,7 @@
               <tr>
                 <th class="col-name">종목</th>
                 <th class="col-symbol">코드</th>
+                <th class="col-symbol">시장</th>
                 <th class="col-theme">테마</th>
                 <th class="col-num">종가/현재가</th>
                 <th class="col-num">평단</th>
@@ -628,7 +630,7 @@
         </div>
 
         <div class="input-footer">
-          <span class="muted">종가/현재가 없으면 수익률 계산불가</span>
+          <span class="muted">기본값은 2026-06-11 브리핑 보유종목 JSON 기준</span>
           <button id="recalcBtn" type="button">다시 계산</button>
         </div>
       </section>
@@ -692,20 +694,932 @@
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <script>
-    const storageKey = "portfolioHeatmapBuilder.v1";
+    const storageKey = "portfolioHeatmapBuilder.v3";
     const defaultRows = [
-      { name: "삼성전자", symbol: "005930", theme: "반도체", price: 75000, avg: 68000, qty: 20, daily: 1.2 },
-      { name: "SK하이닉스", symbol: "000660", theme: "반도체", price: 210500, avg: 144000, qty: 8, daily: 2.6 },
-      { name: "한미반도체", symbol: "042700", theme: "HBM 장비", price: 148000, avg: 132000, qty: 7, daily: 3.1 },
-      { name: "이오테크닉스", symbol: "039030", theme: "HBM 장비", price: 185000, avg: 201000, qty: 4, daily: -0.6 },
-      { name: "현대차", symbol: "005380", theme: "자동차", price: 221000, avg: 238000, qty: 5, daily: -0.8 },
-      { name: "기아", symbol: "000270", theme: "자동차", price: 118000, avg: 101000, qty: 8, daily: 0.9 },
-      { name: "NAVER", symbol: "035420", theme: "플랫폼", price: 198000, avg: 177000, qty: 4, daily: 0.4 },
-      { name: "카카오", symbol: "035720", theme: "플랫폼", price: 51000, avg: 62000, qty: 12, daily: -1.5 },
-      { name: "삼성바이오로직스", symbol: "207940", theme: "바이오", price: 930000, avg: 890000, qty: 1, daily: 1.6 },
-      { name: "셀트리온", symbol: "068270", theme: "바이오", price: 182000, avg: 175000, qty: 4, daily: 0.2 },
-      { name: "한화오션", symbol: "042660", theme: "조선", price: 82000, avg: 65000, qty: 8, daily: -1.1 },
-      { name: "HD현대중공업", symbol: "329180", theme: "조선", price: 308000, avg: 274000, qty: 2, daily: 2.4 }
+      {
+        "name": "니토방적",
+        "symbol": "3110",
+        "market": "JP",
+        "theme": "HBM",
+        "price": 17330,
+        "avg": 20850,
+        "qty": 200,
+        "value": 3466000,
+        "daily": -2.8587443946188342,
+        "totalReturn": -16.882494004796165,
+        "holding": true,
+        "interest": true
+      },
+      {
+        "name": "레저낙홀딩스",
+        "symbol": "4004",
+        "market": "JP",
+        "theme": "HBM",
+        "price": 16375,
+        "avg": 16500,
+        "qty": 100,
+        "value": 1637500,
+        "daily": 6.781871535702641,
+        "totalReturn": -0.7575757575757576,
+        "holding": true,
+        "interest": false
+      },
+      {
+        "name": "히타치",
+        "symbol": "6501",
+        "market": "JP",
+        "theme": "전력·원자력",
+        "price": 4655,
+        "avg": 5139,
+        "qty": 200,
+        "value": 931000,
+        "daily": -2.6964882943143813,
+        "totalReturn": -9.418174742167738,
+        "holding": true,
+        "interest": true
+      },
+      {
+        "name": "이토추",
+        "symbol": "8001",
+        "market": "JP",
+        "theme": "일본 상사주",
+        "price": 1826,
+        "avg": 1110.2,
+        "qty": 500,
+        "value": 913000,
+        "daily": -1.5898679601185663,
+        "totalReturn": 64.47486939290216,
+        "holding": true,
+        "interest": true
+      },
+      {
+        "name": "마루베니",
+        "symbol": "8002",
+        "market": "JP",
+        "theme": "일본 상사주",
+        "price": 4812,
+        "avg": 2295.5,
+        "qty": 300,
+        "value": 1443600,
+        "daily": 0.3545359749739312,
+        "totalReturn": 109.62753212807668,
+        "holding": true,
+        "interest": true
+      },
+      {
+        "name": "미쯔이",
+        "symbol": "8031",
+        "market": "JP",
+        "theme": "일본 상사주",
+        "price": 4857,
+        "avg": 2614,
+        "qty": 200,
+        "value": 971400,
+        "daily": 0.16498247061249743,
+        "totalReturn": 85.80719204284621,
+        "holding": true,
+        "interest": true
+      },
+      {
+        "name": "스미토모상사",
+        "symbol": "8053",
+        "market": "JP",
+        "theme": "일본 상사주",
+        "price": 6186,
+        "avg": 3001,
+        "qty": 100,
+        "value": 618600,
+        "daily": -2.398232881035027,
+        "totalReturn": 106.13128957014328,
+        "holding": true,
+        "interest": true
+      },
+      {
+        "name": "SK하이닉스",
+        "symbol": "000660",
+        "market": "KR",
+        "theme": "국내 우량·배당",
+        "price": 2101000,
+        "avg": 835500,
+        "qty": 4,
+        "value": 8404000,
+        "daily": 2.59,
+        "totalReturn": 151.46618791143027,
+        "holding": true,
+        "interest": true
+      },
+      {
+        "name": "인스코비",
+        "symbol": "006490",
+        "market": "KR",
+        "theme": "기타·과거 보유",
+        "price": 297,
+        "avg": 8368.2422,
+        "qty": 12200,
+        "value": 3623400,
+        "daily": -1.33,
+        "totalReturn": -96.45086753078793,
+        "holding": true,
+        "interest": false
+      },
+      {
+        "name": "삼성물산",
+        "symbol": "028260",
+        "market": "KR",
+        "theme": "전력·원자력",
+        "price": 410000,
+        "avg": 268887.5,
+        "qty": 40,
+        "value": 16400000,
+        "daily": 0.61,
+        "totalReturn": 52.48012644693413,
+        "holding": true,
+        "interest": true
+      },
+      {
+        "name": "더라미",
+        "symbol": "032860",
+        "market": "KR",
+        "theme": "기타·과거 보유",
+        "price": 795,
+        "avg": 12155.5474,
+        "qty": 278,
+        "value": 221010,
+        "daily": 3.92,
+        "totalReturn": -93.4597762299545,
+        "holding": true,
+        "interest": false
+      },
+      {
+        "name": "네패스",
+        "symbol": "033640",
+        "market": "KR",
+        "theme": "반도체 소부장",
+        "price": 31550,
+        "avg": 32333.7399,
+        "qty": 678,
+        "value": 21390900,
+        "daily": 2.1,
+        "totalReturn": -2.4239072274622773,
+        "holding": true,
+        "interest": false
+      },
+      {
+        "name": "셀루메드",
+        "symbol": "049180",
+        "market": "KR",
+        "theme": "기타·과거 보유",
+        "price": 1009,
+        "avg": 13907.232,
+        "qty": 7206,
+        "value": 7270854,
+        "daily": 0,
+        "totalReturn": -92.74478201849747,
+        "holding": true,
+        "interest": false
+      },
+      {
+        "name": "KH바텍",
+        "symbol": "060720",
+        "market": "KR",
+        "theme": "반도체 소부장",
+        "price": 10760,
+        "avg": 21832.5451,
+        "qty": 900,
+        "value": 9684000,
+        "daily": 2.87,
+        "totalReturn": -50.71577793640266,
+        "holding": true,
+        "interest": false
+      },
+      {
+        "name": "이엘피",
+        "symbol": "063760",
+        "market": "KR",
+        "theme": "반도체 소부장",
+        "price": 2800,
+        "avg": 11933.7409,
+        "qty": 4400,
+        "value": 12320000,
+        "daily": 3.32,
+        "totalReturn": -76.53711425609106,
+        "holding": true,
+        "interest": false
+      },
+      {
+        "name": "LG전자",
+        "symbol": "066570",
+        "market": "KR",
+        "theme": "국내 우량·배당",
+        "price": 226000,
+        "avg": 131285,
+        "qty": 68,
+        "value": 15368000,
+        "daily": 0.89,
+        "totalReturn": 72.14457097155045,
+        "holding": true,
+        "interest": false
+      },
+      {
+        "name": "한세실업",
+        "symbol": "105630",
+        "market": "KR",
+        "theme": "국내 우량·배당",
+        "price": 8490,
+        "avg": 14944,
+        "qty": 1279,
+        "value": 10858710,
+        "daily": -0.35,
+        "totalReturn": -43.187901498929335,
+        "holding": true,
+        "interest": false
+      },
+      {
+        "name": "리가켐바이오",
+        "symbol": "141080",
+        "market": "KR",
+        "theme": "기타·과거 보유",
+        "price": 134800,
+        "avg": 56538,
+        "qty": 165,
+        "value": 22242000,
+        "daily": 2.98,
+        "totalReturn": 138.42371502352398,
+        "holding": true,
+        "interest": false
+      },
+      {
+        "name": "케일럼",
+        "symbol": "258610",
+        "market": "KR",
+        "theme": "기타·과거 보유",
+        "price": 1006,
+        "avg": 3136,
+        "qty": 604,
+        "value": 607624,
+        "daily": -1.95,
+        "totalReturn": -67.92091836734694,
+        "holding": true,
+        "interest": false
+      },
+      {
+        "name": "카이노스메드",
+        "symbol": "284620",
+        "market": "KR",
+        "theme": "기타·과거 보유",
+        "price": 1087,
+        "avg": 4862,
+        "qty": 8500,
+        "value": 9239500,
+        "daily": 0,
+        "totalReturn": -77.64294529000412,
+        "holding": true,
+        "interest": false
+      },
+      {
+        "name": "SK아이이테크놀로지",
+        "symbol": "361610",
+        "market": "KR",
+        "theme": "기타·과거 보유",
+        "price": 20500,
+        "avg": 105000,
+        "qty": 2,
+        "value": 41000,
+        "daily": 21.3,
+        "totalReturn": -80.47619047619048,
+        "holding": true,
+        "interest": false
+      },
+      {
+        "name": "LG에너지솔루션",
+        "symbol": "373220",
+        "market": "KR",
+        "theme": "2차전지",
+        "price": 384500,
+        "avg": 340380.2353,
+        "qty": 17,
+        "value": 6536500,
+        "daily": -0.26,
+        "totalReturn": 12.961905578259882,
+        "holding": true,
+        "interest": true
+      },
+      {
+        "name": "DL이앤씨",
+        "symbol": "375500",
+        "market": "KR",
+        "theme": "전력·원자력",
+        "price": 70200,
+        "avg": 47920,
+        "qty": 160,
+        "value": 11232000,
+        "daily": -0.28,
+        "totalReturn": 46.494156928213684,
+        "holding": true,
+        "interest": true
+      },
+      {
+        "name": "에이에스텍",
+        "symbol": "453860",
+        "market": "KR",
+        "theme": "기타·과거 보유",
+        "price": 11090,
+        "avg": 28000,
+        "qty": 6,
+        "value": 66540,
+        "daily": 1.56,
+        "totalReturn": -60.392857142857146,
+        "holding": true,
+        "interest": false
+      },
+      {
+        "name": "엑세스바이오",
+        "symbol": "950130",
+        "market": "KR",
+        "theme": "기타·과거 보유",
+        "price": 2565,
+        "avg": 12482,
+        "qty": 6819,
+        "value": 17490735,
+        "daily": -1.16,
+        "totalReturn": -79.45040858836725,
+        "holding": true,
+        "interest": false
+      },
+      {
+        "name": "디지캡",
+        "symbol": "197140",
+        "market": "KR",
+        "theme": "기타·과거 보유",
+        "price": 1892,
+        "avg": 9657,
+        "qty": 1039,
+        "value": 1965788,
+        "daily": 18.25,
+        "totalReturn": -80.40799420109765,
+        "holding": true,
+        "interest": false
+      },
+      {
+        "name": "신라젠",
+        "symbol": "215600",
+        "market": "KR",
+        "theme": "기타·과거 보유",
+        "price": 2525,
+        "avg": 69500,
+        "qty": 1,
+        "value": 2525,
+        "daily": 3.91,
+        "totalReturn": -96.36690647482014,
+        "holding": true,
+        "interest": false
+      },
+      {
+        "name": "인트로메딕",
+        "symbol": "150840",
+        "market": "KR",
+        "theme": "기타·과거 보유",
+        "price": 105,
+        "avg": 7456,
+        "qty": 4220,
+        "value": 443100,
+        "daily": 0,
+        "totalReturn": -98.59173819742489,
+        "holding": true,
+        "interest": false
+      },
+      {
+        "name": "참좋은여행",
+        "symbol": "094850",
+        "market": "KR",
+        "theme": "기타·과거 보유",
+        "price": 4300,
+        "avg": 4440,
+        "qty": 9,
+        "value": 38700,
+        "daily": 0,
+        "totalReturn": -3.153153153153153,
+        "holding": true,
+        "interest": false
+      },
+      {
+        "name": "파멥신",
+        "symbol": "208340",
+        "market": "KR",
+        "theme": "기타·과거 보유",
+        "price": 120,
+        "avg": 10988,
+        "qty": 2246,
+        "value": 269520,
+        "daily": 0,
+        "totalReturn": -98.90789952675647,
+        "holding": true,
+        "interest": false
+      },
+      {
+        "name": "파인엠텍",
+        "symbol": "441270",
+        "market": "KR",
+        "theme": "반도체 소부장",
+        "price": 7260,
+        "avg": null,
+        "qty": 1584,
+        "value": 11499840,
+        "daily": -0.14,
+        "totalReturn": null,
+        "holding": true,
+        "interest": false
+      },
+      {
+        "name": "파인테크닉스",
+        "symbol": "106240",
+        "market": "KR",
+        "theme": "반도체 소부장",
+        "price": 1279,
+        "avg": 12322,
+        "qty": 862,
+        "value": 1102498,
+        "daily": 8.57,
+        "totalReturn": -89.62019152734946,
+        "holding": true,
+        "interest": false
+      },
+      {
+        "name": "KODEX 200미국채혼합",
+        "symbol": "284430",
+        "market": "KR",
+        "theme": "기타·과거 보유",
+        "price": 23380,
+        "avg": 18976.4776,
+        "qty": 2213,
+        "value": 51739940,
+        "daily": -0.19,
+        "totalReturn": 23.20516195461145,
+        "holding": true,
+        "interest": false
+      },
+      {
+        "name": "TIGER 반도체TOP10",
+        "symbol": "396500",
+        "market": "KR",
+        "theme": "HBM",
+        "price": 48560,
+        "avg": 30841.8978,
+        "qty": 626,
+        "value": 30398560,
+        "daily": 3.69,
+        "totalReturn": 57.44815825615418,
+        "holding": true,
+        "interest": false
+      },
+      {
+        "name": "ACE 원자력TOP10",
+        "symbol": "433500",
+        "market": "KR",
+        "theme": "전력·원자력",
+        "price": 65100,
+        "avg": 68252.9104,
+        "qty": 201,
+        "value": 13085100,
+        "daily": -1.29,
+        "totalReturn": -4.619452016151523,
+        "holding": true,
+        "interest": false
+      },
+      {
+        "name": "RISE 글로벌원자력",
+        "symbol": "442320",
+        "market": "KR",
+        "theme": "전력·원자력",
+        "price": 39950,
+        "avg": 43492,
+        "qty": 38,
+        "value": 1518100,
+        "daily": -1.83,
+        "totalReturn": -8.144026487629908,
+        "holding": true,
+        "interest": false
+      },
+      {
+        "name": "ACE 글로벌반도체TOP4 PLUS",
+        "symbol": "446770",
+        "market": "KR",
+        "theme": "AI 인프라",
+        "price": 88105,
+        "avg": 27046.8125,
+        "qty": 240,
+        "value": 21145200,
+        "daily": -0.16,
+        "totalReturn": 225.7500306182106,
+        "holding": true,
+        "interest": false
+      },
+      {
+        "name": "KODEX 삼성전자채권혼합",
+        "symbol": "448330",
+        "market": "KR",
+        "theme": "기타·과거 보유",
+        "price": 17780,
+        "avg": 15552.1977,
+        "qty": 3919,
+        "value": 69679820,
+        "daily": -0.11,
+        "totalReturn": 14.324678261755293,
+        "holding": true,
+        "interest": false
+      },
+      {
+        "name": "KODEX AI반도체핵심장비",
+        "symbol": "471990",
+        "market": "KR",
+        "theme": "반도체 소부장",
+        "price": 29850,
+        "avg": 25044.9162,
+        "qty": 358,
+        "value": 10686300,
+        "daily": 7.96,
+        "totalReturn": 19.185864948784758,
+        "holding": true,
+        "interest": false
+      },
+      {
+        "name": "KODEX 미국AI전력핵심인프라",
+        "symbol": "487230",
+        "market": "KR",
+        "theme": "전력·원자력",
+        "price": 23490,
+        "avg": 19808.149,
+        "qty": 2034,
+        "value": 47778660,
+        "daily": -3.45,
+        "totalReturn": 18.587557264839518,
+        "holding": true,
+        "interest": true
+      },
+      {
+        "name": "TIGER 조선TOP10",
+        "symbol": "494670",
+        "market": "KR",
+        "theme": "조선·북극항로",
+        "price": 26745,
+        "avg": 28853,
+        "qty": 38,
+        "value": 1016310,
+        "daily": -1.67,
+        "totalReturn": -7.30599937614806,
+        "holding": true,
+        "interest": false
+      },
+      {
+        "name": "HANARO 원자력iSelect",
+        "symbol": "434730",
+        "market": "KR",
+        "theme": "전력·원자력",
+        "price": 66905,
+        "avg": 66799.1111,
+        "qty": 90,
+        "value": 6021450,
+        "daily": 1.0878597869607918,
+        "totalReturn": 0.15851841009195308,
+        "holding": true,
+        "interest": false
+      },
+      {
+        "name": "KODEX 증권",
+        "symbol": "102970",
+        "market": "KR",
+        "theme": "기타·과거 보유",
+        "price": 23460,
+        "avg": 28876.6015,
+        "qty": 103,
+        "value": 2416380,
+        "daily": 0.75,
+        "totalReturn": -18.757752829663016,
+        "holding": true,
+        "interest": false
+      },
+      {
+        "name": "RISE 대형고배당10TotalReturn",
+        "symbol": "315960",
+        "market": "KR",
+        "theme": "기타·과거 보유",
+        "price": 89260,
+        "avg": 53823.056,
+        "qty": 6,
+        "value": 535560,
+        "daily": 2.5741208917490233,
+        "totalReturn": 65.83971012825677,
+        "holding": true,
+        "interest": false
+      },
+      {
+        "name": "TIGER 200 헬스케어",
+        "symbol": "227540",
+        "market": "KR",
+        "theme": "기타·과거 보유",
+        "price": 18095,
+        "avg": 22099,
+        "qty": 1364,
+        "value": 24681580,
+        "daily": 3.1347962382445136,
+        "totalReturn": -18.118466898954704,
+        "holding": true,
+        "interest": false
+      },
+      {
+        "name": "TIGER 2차전지TOP10",
+        "symbol": "364980",
+        "market": "KR",
+        "theme": "2차전지",
+        "price": 10780,
+        "avg": 8385,
+        "qty": 611,
+        "value": 6586580,
+        "daily": 0.75,
+        "totalReturn": 28.562909958258796,
+        "holding": true,
+        "interest": false
+      },
+      {
+        "name": "TIGER Fn메타버스",
+        "symbol": "400970",
+        "market": "KR",
+        "theme": "기타·과거 보유",
+        "price": 9170,
+        "avg": 9454,
+        "qty": 989,
+        "value": 9069130,
+        "daily": 4.8,
+        "totalReturn": -3.0040194626613075,
+        "holding": true,
+        "interest": false
+      },
+      {
+        "name": "TIGER 반도체",
+        "symbol": "091230",
+        "market": "KR",
+        "theme": "HBM",
+        "price": 166140,
+        "avg": 42323.5658,
+        "qty": 47,
+        "value": 7808580,
+        "daily": 8.019895321998636,
+        "totalReturn": 292.547264748903,
+        "holding": true,
+        "interest": false
+      },
+      {
+        "name": "TIGER 일본반도체FACTSET",
+        "symbol": "465660",
+        "market": "KR",
+        "theme": "반도체 소부장",
+        "price": 27080,
+        "avg": 16037.3288,
+        "qty": 368,
+        "value": 9965440,
+        "daily": -0.37,
+        "totalReturn": 68.8560503458558,
+        "holding": true,
+        "interest": false
+      },
+      {
+        "name": "TIGER 차이나전기차SOLACTIVE",
+        "symbol": "371460",
+        "market": "KR",
+        "theme": "2차전지",
+        "price": 12735,
+        "avg": 20355,
+        "qty": 270,
+        "value": 3438450,
+        "daily": -0.47,
+        "totalReturn": -37.43551952837141,
+        "holding": true,
+        "interest": false
+      },
+      {
+        "name": "애플",
+        "symbol": "AAPL",
+        "market": "US",
+        "theme": "미국 빅테크/하이퍼스케일러",
+        "price": 291.5799865722656,
+        "avg": 148.3162,
+        "qty": 100,
+        "value": 29157.998657226562,
+        "daily": 0.3544996808021896,
+        "totalReturn": 96.59348511643745,
+        "holding": true,
+        "interest": false
+      },
+      {
+        "name": "알나일램 파마슈티컬스",
+        "symbol": "ALNY",
+        "market": "US",
+        "theme": "기타·과거 보유",
+        "price": 291.2200012207031,
+        "avg": null,
+        "qty": 2,
+        "value": 582.4400024414062,
+        "daily": -2.1734022532303894,
+        "totalReturn": null,
+        "holding": true,
+        "interest": true
+      },
+      {
+        "name": "바이오엔테크(ADR)",
+        "symbol": "BNTX",
+        "market": "US",
+        "theme": "기타·과거 보유",
+        "price": 86.1500015258789,
+        "avg": 86.2633,
+        "qty": 65,
+        "value": 5599.750099182129,
+        "daily": -0.4046225134347905,
+        "totalReturn": -0.13134029665117694,
+        "holding": true,
+        "interest": false
+      },
+      {
+        "name": "이튼",
+        "symbol": "ETN",
+        "market": "US",
+        "theme": "전력·원자력",
+        "price": 375.4599914550781,
+        "avg": null,
+        "qty": 10,
+        "value": 3754.5999145507812,
+        "daily": -6.536893778210927,
+        "totalReturn": null,
+        "holding": true,
+        "interest": true
+      },
+      {
+        "name": "EWZ",
+        "symbol": "EWZ",
+        "market": "US",
+        "theme": "기타·과거 보유",
+        "price": 33.779998779296875,
+        "avg": null,
+        "qty": 49,
+        "value": 1655.2199401855469,
+        "daily": -0.4127340719511323,
+        "totalReturn": null,
+        "holding": true,
+        "interest": true
+      },
+      {
+        "name": "GE 버노바",
+        "symbol": "GEV",
+        "market": "US",
+        "theme": "전력·원자력",
+        "price": 867.0900268554688,
+        "avg": null,
+        "qty": 11,
+        "value": 9537.990295410156,
+        "daily": -5.766450703773176,
+        "totalReturn": null,
+        "holding": true,
+        "interest": true
+      },
+      {
+        "name": "아이온큐",
+        "symbol": "IONQ",
+        "market": "US",
+        "theme": "양자컴퓨팅",
+        "price": 56.630001068115234,
+        "avg": null,
+        "qty": 50.42919,
+        "value": 2855.805083564186,
+        "daily": -0.10583446824336787,
+        "totalReturn": null,
+        "holding": true,
+        "interest": true
+      },
+      {
+        "name": "센트러스 에너지",
+        "symbol": "LEU",
+        "market": "US",
+        "theme": "전력·원자력",
+        "price": 146.61000061035156,
+        "avg": null,
+        "qty": 14,
+        "value": 2052.540008544922,
+        "daily": -6.03128022332091,
+        "totalReturn": null,
+        "holding": true,
+        "interest": true
+      },
+      {
+        "name": "엔비디아",
+        "symbol": "NVDA",
+        "market": "US",
+        "theme": "AI 인프라",
+        "price": 200.4199981689453,
+        "avg": null,
+        "qty": 15,
+        "value": 3006.2999725341797,
+        "daily": -3.7321697398258857,
+        "totalReturn": null,
+        "holding": true,
+        "interest": true
+      },
+      {
+        "name": "오픈도어 테크놀로지스",
+        "symbol": "OPEN",
+        "market": "US",
+        "theme": "기타·과거 보유",
+        "price": 4.480000019073486,
+        "avg": 23.3639,
+        "qty": 489,
+        "value": 2190.720009326935,
+        "daily": 3.2258032618297365,
+        "totalReturn": -80.82510709616912,
+        "holding": true,
+        "interest": false
+      },
+      {
+        "name": "오라클",
+        "symbol": "ORCL",
+        "market": "US",
+        "theme": "AI 인프라",
+        "price": 201.25999450683594,
+        "avg": null,
+        "qty": 9.324279,
+        "value": 1876.604340320206,
+        "daily": -2.210778439206985,
+        "totalReturn": null,
+        "holding": true,
+        "interest": true
+      },
+      {
+        "name": "팔란티어 테크",
+        "symbol": "PLTR",
+        "market": "US",
+        "theme": "AI 인프라",
+        "price": 130.2100067138672,
+        "avg": 25.9186,
+        "qty": 98,
+        "value": 12760.580657958984,
+        "daily": -1.4083444440079766,
+        "totalReturn": 402.38055571623147,
+        "holding": true,
+        "interest": false
+      },
+      {
+        "name": "디웨이브 퀀텀",
+        "symbol": "QBTS",
+        "market": "US",
+        "theme": "양자컴퓨팅",
+        "price": 23.25,
+        "avg": null,
+        "qty": 63.50176,
+        "value": 1476.41592,
+        "daily": -1.1479611076051146,
+        "totalReturn": null,
+        "holding": true,
+        "interest": true
+      },
+      {
+        "name": "리게티 컴퓨팅",
+        "symbol": "RGTI",
+        "market": "US",
+        "theme": "양자컴퓨팅",
+        "price": 19.44499969482422,
+        "avg": null,
+        "qty": 65.95821,
+        "value": 1282.5573733211515,
+        "daily": -1.2442906682994888,
+        "totalReturn": null,
+        "holding": true,
+        "interest": true
+      },
+      {
+        "name": "테슬라",
+        "symbol": "TSLA",
+        "market": "US",
+        "theme": "미국 빅테크/하이퍼스케일러",
+        "price": 381.5899963378906,
+        "avg": 159.0031,
+        "qty": 160,
+        "value": 61054.3994140625,
+        "daily": -3.8040729596927627,
+        "totalReturn": 139.9890293572205,
+        "holding": true,
+        "interest": false
+      },
+      {
+        "name": "버티브 홀딩스",
+        "symbol": "VRT",
+        "market": "US",
+        "theme": "AI 인프라",
+        "price": 280.9800109863281,
+        "avg": null,
+        "qty": 1,
+        "value": 280.9800109863281,
+        "daily": -2.9497023871952655,
+        "totalReturn": null,
+        "holding": true,
+        "interest": true
+      }
     ];
 
     let rows = cloneRows(defaultRows);
@@ -741,15 +1655,23 @@
       return Number.isFinite(n) ? n : 0;
     }
 
-    function formatMoney(value) {
+    function marketCurrency(market) {
+      if (el.currency.value !== "AUTO") return el.currency.value;
+      if (market === "US") return "USD";
+      if (market === "JP") return "JPY";
+      return "KRW";
+    }
+
+    function formatMoney(value, market = "") {
       const currency = el.currency.value;
+      const displayCurrency = currency === "AUTO" ? marketCurrency(market) : currency;
       const abs = Math.abs(value);
-      if (currency === "KRW") {
+      if (displayCurrency === "KRW") {
         if (abs >= 100000000) return `${(value / 100000000).toFixed(1)}억`;
         if (abs >= 10000) return `${Math.round(value / 10000).toLocaleString("ko-KR")}만`;
         return `${Math.round(value).toLocaleString("ko-KR")}원`;
       }
-      const symbol = currency === "USD" ? "$" : "¥";
+      const symbol = displayCurrency === "USD" ? "$" : "¥";
       if (abs >= 1000000) return `${symbol}${(value / 1000000).toFixed(2)}M`;
       if (abs >= 1000) return `${symbol}${(value / 1000).toFixed(1)}K`;
       return `${symbol}${value.toLocaleString("ko-KR", { maximumFractionDigits: 2 })}`;
@@ -763,18 +1685,17 @@
 
     function classFor(value) {
       if (!Number.isFinite(value)) return "flat";
-      if (value > 0.005) return "positive";
-      if (value < -0.005) return "negative";
+      if (value > 0.3) return "positive";
+      if (value < -0.3) return "negative";
       return "flat";
     }
 
     function colorFor(value) {
-      if (!Number.isFinite(value)) return "#7f8790";
-      const v = Math.max(-40, Math.min(40, Number.isFinite(value) ? value : 0));
-      if (Math.abs(v) < 0.01) return "#7f8790";
-      const t = Math.min(1, Math.abs(v) / 25);
-      if (v > 0) return mix("#8f949b", "#c9352b", .35 + t * .65);
-      return mix("#8f949b", "#2369c9", .35 + t * .65);
+      if (!Number.isFinite(value)) return "rgb(95,102,115)";
+      if (Math.abs(value) <= 0.3) return "rgb(82,88,100)";
+      const strength = Math.min(Math.abs(value) / 6, 1);
+      if (value > 0) return `rgb(${120 + Math.round(95 * strength)},${40 - Math.round(20 * strength)},${48 - Math.round(20 * strength)})`;
+      return `rgb(${35 - Math.round(10 * strength)},${82 - Math.round(25 * strength)},${150 + Math.round(60 * strength)})`;
     }
 
     function mix(a, b, t) {
@@ -799,31 +1720,35 @@
         const price = parseNumber(r.price);
         const avg = parseNumber(r.avg);
         const qty = parseNumber(r.qty);
-        const daily = parseNumber(r.daily);
+        const dailyRaw = r.daily === null || r.daily === undefined || r.daily === "" ? NaN : parseNumber(r.daily);
+        const storedValue = parseNumber(r.value);
+        const storedReturn = r.totalReturn === null || r.totalReturn === undefined || r.totalReturn === "" ? NaN : parseNumber(r.totalReturn);
         const hasMarketPrice = price > 0;
         const markPrice = price > 0 ? price : avg;
-        const value = markPrice * qty;
+        const calculatedValue = markPrice * qty;
+        const value = storedValue > 0 ? storedValue : calculatedValue;
         const cost = avg > 0 ? avg * qty : 0;
-        const pnl = hasMarketPrice && cost > 0 ? value - cost : NaN;
-        const ret = hasMarketPrice && cost > 0 ? (pnl / cost) * 100 : NaN;
+        const ret = Number.isFinite(storedReturn) ? storedReturn : (hasMarketPrice && cost > 0 ? ((markPrice - avg) / avg) * 100 : NaN);
+        const pnl = Number.isFinite(ret) && value > 0 ? value - (value / (1 + ret / 100)) : (hasMarketPrice && cost > 0 ? value - cost : NaN);
         return {
           ...r,
           index,
           name: (r.name || "").trim() || "이름 없음",
           symbol: (r.symbol || "").trim(),
+          market: (r.market || "").trim() || "KR",
           theme: (r.theme || "").trim() || "기타",
           price,
           avg,
           qty,
           hasMarketPrice,
           markPrice,
-          daily,
+          daily: dailyRaw,
           value,
           cost,
           pnl,
           returnPct: ret
         };
-      }).filter(r => r.qty > 0 && (r.price > 0 || r.avg > 0));
+      }).filter(r => r.value > 0 || r.qty > 0 || r.price > 0);
     }
 
     function renderInputs() {
@@ -833,6 +1758,7 @@
         tr.innerHTML = `
           <td><input value="${escapeAttr(row.name || "")}" data-index="${index}" data-key="name" aria-label="종목명"></td>
           <td><input value="${escapeAttr(row.symbol || "")}" data-index="${index}" data-key="symbol" aria-label="코드"></td>
+          <td><input value="${escapeAttr(row.market || "KR")}" data-index="${index}" data-key="market" aria-label="시장"></td>
           <td><input value="${escapeAttr(row.theme || "")}" data-index="${index}" data-key="theme" aria-label="테마"></td>
           <td><input inputmode="decimal" value="${escapeAttr(row.price ?? "")}" data-index="${index}" data-key="price" aria-label="종가 또는 현재가"></td>
           <td><input inputmode="decimal" value="${escapeAttr(row.avg ?? "")}" data-index="${index}" data-key="avg" aria-label="평단"></td>
@@ -872,9 +1798,9 @@
       const noData = data.length - metricRows.length;
       const largest = data.slice().sort((a, b) => b.value - a.value)[0];
 
-      el.totalValue.textContent = formatMoney(totalValue);
+      el.totalValue.textContent = formatMoney(totalValue, "KR");
       el.totalCost.textContent = `수익률 계산 가능 ${calculable.length}/${data.length}종목`;
-      el.totalPnl.textContent = Number.isFinite(totalPnl) ? formatMoney(totalPnl) : "-";
+      el.totalPnl.textContent = Number.isFinite(totalPnl) ? formatMoney(totalPnl, "KR") : "-";
       el.totalPnl.className = `value ${classFor(totalPnl)}`;
       el.totalReturn.textContent = `수익률 ${formatPct(totalReturn)}`;
       el.directionCount.textContent = noData ? `${up} / ${down} / ${flat} · 미계산 ${noData}` : `${up} / ${down} / ${flat}`;
@@ -891,7 +1817,7 @@
         <div class="rank-item">
           <div>
             <div class="rank-name">${escapeHtml(r.name)} ${r.symbol ? `<span class="rank-meta">${escapeHtml(r.symbol)}</span>` : ""}</div>
-            <div class="rank-meta">${escapeHtml(r.theme)} · ${formatMoney(r.value)}</div>
+            <div class="rank-meta">${escapeHtml(r.market)} · ${escapeHtml(r.theme)} · ${formatMoney(r.value, r.market)}</div>
           </div>
           <strong>${totalValue > 0 ? ((r.value / totalValue) * 100).toFixed(1) : "0.0"}%</strong>
         </div>
@@ -900,7 +1826,7 @@
         <div class="rank-item">
           <div>
             <div class="rank-name">${escapeHtml(r.name)} ${r.symbol ? `<span class="rank-meta">${escapeHtml(r.symbol)}</span>` : ""}</div>
-            <div class="rank-meta">손익 ${Number.isFinite(r.pnl) ? formatMoney(r.pnl) : "-"} · ${formatMoney(r.value)}</div>
+            <div class="rank-meta">손익 ${Number.isFinite(r.pnl) ? formatMoney(r.pnl, r.market) : "-"} · ${formatMoney(r.value, r.market)}</div>
           </div>
           <strong class="${classFor(r.returnPct)}">${formatPct(r.returnPct)}</strong>
         </div>
@@ -920,11 +1846,10 @@
         el.heatmap.innerHTML = `<div class="empty">종목을 입력하면 히트맵이 표시됩니다.</div>`;
         return;
       }
-      const values = data.map(r => sizeMode === "equal" ? 1 : Math.max(r.value, 1));
       const metricKey = el.colorMetric.value === "daily" ? "daily" : "returnPct";
       const totalValue = data.reduce((sum, r) => sum + r.value, 0);
       const groups = groupedRows(data, metricKey);
-      const groupRects = mosaicLayout(groups.map(group => sizeMode === "equal" ? 1 : Math.max(group.value, 1)), 0, 0, width, height);
+      const groupRects = marketPanelLayout(groups, 0, 0, width, height);
       groups.forEach((group, groupIndex) => {
         const groupRect = groupRects[groupIndex];
         const groupEl = document.createElement("div");
@@ -953,13 +1878,13 @@
         tile.style.width = `${rect.w}px`;
         tile.style.height = `${rect.h}px`;
         tile.style.background = colorFor(r[metricKey]);
-        tile.title = `${r.name}${r.symbol ? ` (${r.symbol})` : ""}\n평가금액 ${formatMoney(r.value)}\n평단 ${r.avg || "-"} / 수량 ${r.qty}\n수익률 ${formatPct(r.returnPct)} / 등락률 ${formatPct(r.daily)}`;
+        tile.title = `${r.name}${r.symbol ? ` (${r.symbol})` : ""}\n시장 ${r.market}\n평가금액 ${formatMoney(r.value, r.market)}\n평단 ${r.avg || "-"} / 수량 ${r.qty || "-"}\n수익률 ${formatPct(r.returnPct)} / 등락률 ${formatPct(r.daily)}`;
         const weight = totalValue > 0 ? (r.value / totalValue) * 100 : 0;
         tile.innerHTML = `
           <div class="name">${escapeHtml(r.name)}</div>
           <div class="symbol">${escapeHtml(r.symbol || r.theme)}</div>
           <div class="rate">${formatPct(r[metricKey])}</div>
-          <div class="money">${formatMoney(r.value)} · ${weight.toFixed(1)}%</div>
+          <div class="money">${formatMoney(r.value, r.market)} · ${weight.toFixed(1)}%</div>
           <div class="qty">평단 ${compactNumber(r.avg)} · ${compactNumber(r.qty)}주</div>
         `;
           groupEl.appendChild(tile);
@@ -977,16 +1902,44 @@
     function groupedRows(data, metricKey) {
       const map = new Map();
       data.forEach(row => {
-        const key = row.theme || "기타";
-        if (!map.has(key)) map.set(key, { name: key, rows: [], value: 0, metric: NaN });
+        const key = row.market || "KR";
+        if (!map.has(key)) map.set(key, { name: marketLabel(key), market: key, rows: [], value: 0, metric: NaN });
         const group = map.get(key);
         group.rows.push(row);
         group.value += row.value;
       });
       return Array.from(map.values()).map(group => ({
         ...group,
+        rows: group.rows.slice().sort((a, b) => (a.theme || "").localeCompare(b.theme || "ko") || b.value - a.value),
         metric: weightedMetric(group.rows, metricKey)
-      })).sort((a, b) => b.value - a.value);
+      })).sort((a, b) => marketOrder(a.market) - marketOrder(b.market));
+    }
+
+    function marketLabel(market) {
+      return { KR: "한국", JP: "일본", US: "미국" }[market] || market || "기타";
+    }
+
+    function marketOrder(market) {
+      return { KR: 0, JP: 1, US: 2 }[market] ?? 9;
+    }
+
+    function marketPanelLayout(groups, x, y, w, h) {
+      const count = groups.length;
+      const gap = 12;
+      if (count <= 0) return [];
+      if (count === 1) return [{ x, y, w, h }];
+      if (count === 2) {
+        const panelW = (w - gap) / 2;
+        return [{ x, y, w: panelW, h }, { x: x + panelW + gap, y, w: panelW, h }];
+      }
+      const leftW = w * 0.58;
+      const rightW = w - leftW - gap;
+      const rightH = (h - gap) / 2;
+      return [
+        { x, y, w: leftW, h },
+        { x: x + leftW + gap, y, w: rightW, h: rightH },
+        { x: x + leftW + gap, y: y + rightH + gap, w: rightW, h: rightH }
+      ];
     }
 
     function weightedMetric(groupRows, metricKey) {
@@ -1101,11 +2054,12 @@
       return body.map(line => splitCsvLine(line)).filter(cols => cols.length >= 3).map(cols => ({
         name: cols[0] || "",
         symbol: cols[1] || "",
-        theme: cols[2] || "기타",
-        price: parseNumber(cols[3]),
-        avg: parseNumber(cols[4]),
-        qty: parseNumber(cols[5]),
-        daily: parseNumber(cols[6])
+        market: (cols[2] || "KR").toUpperCase(),
+        theme: cols[3] || "기타",
+        price: parseNumber(cols[4]),
+        avg: parseNumber(cols[5]),
+        qty: parseNumber(cols[6]),
+        daily: parseNumber(cols[7])
       }));
     }
 
@@ -1138,7 +2092,7 @@
       const metricKey = el.colorMetric.value === "daily" ? "daily" : "returnPct";
       const totalValue = data.reduce((sum, r) => sum + r.value, 0);
       const groups = groupedRows(data, metricKey);
-      const groupRects = mosaicLayout(groups.map(group => sizeMode === "equal" ? 1 : Math.max(group.value, 1)), 24, chartY, width - 48, chartH);
+      const groupRects = marketPanelLayout(groups, 24, chartY, width - 48, chartH);
       const tiles = groups.map((group, groupIndex) => {
         const groupRect = groupRects[groupIndex];
         const headH = groupRect.h < 92 ? 22 : 28;
@@ -1159,7 +2113,7 @@
           const label = escapeXml(r.name);
           const symbol = escapeXml(r.symbol || r.theme);
           const rate = formatPct(r[metricKey]);
-          const money = formatMoney(r.value);
+          const money = formatMoney(r.value, r.market);
           const weight = totalValue > 0 ? `${((r.value / totalValue) * 100).toFixed(1)}%` : "0.0%";
           const nameSize = tiny ? 14 : compact ? 18 : 34;
           const rateSize = tiny ? 16 : compact ? 22 : 40;
@@ -1188,9 +2142,9 @@
         <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
           <rect width="100%" height="100%" fill="#101722"/>
           <text x="24" y="38" fill="#ffffff" font-size="28" font-weight="850">포트폴리오 히트맵</text>
-          <text x="24" y="66" fill="#aab6c5" font-size="15">총 평가금액 ${escapeXml(formatMoney(totalValue))} · 크기 ${sizeMode === "equal" ? "동일" : "평가금액"} · 색 ${el.colorMetric.value === "daily" ? "오늘 등락률" : "수익률"}</text>
-          <text x="${width - 24}" y="42" fill="#ffffff" font-size="18" font-weight="800" text-anchor="end">${escapeXml(formatMoney(totalValue))}</text>
-          <text x="${width - 24}" y="66" fill="#aab6c5" font-size="12" text-anchor="end">${data.length}종목 · ${groups.length}테마</text>
+          <text x="24" y="66" fill="#aab6c5" font-size="15">2026-06-11 브리핑 보유종목 기준 · 크기 ${sizeMode === "equal" ? "동일" : "평가금액"} · 색 ${el.colorMetric.value === "daily" ? "오늘 등락률" : "수익률"}</text>
+          <text x="${width - 24}" y="42" fill="#ffffff" font-size="18" font-weight="800" text-anchor="end">${data.length}종목</text>
+          <text x="${width - 24}" y="66" fill="#aab6c5" font-size="12" text-anchor="end">${groups.map(g => `${g.market} ${g.rows.length}`).join(" · ")}</text>
           ${tiles}
         </svg>`;
     }
@@ -1221,8 +2175,8 @@
       const url = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml;charset=utf-8" }));
       img.onload = () => {
         const canvas = document.createElement("canvas");
-        canvas.width = 1280;
-        canvas.height = 760;
+        canvas.width = img.naturalWidth || 1280;
+        canvas.height = img.naturalHeight || 820;
         const ctx = canvas.getContext("2d");
         ctx.fillStyle = "#f5f7fa";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -1266,8 +2220,8 @@
       try {
         const data = JSON.parse(raw);
         rows = Array.isArray(data.rows) ? data.rows : cloneRows(defaultRows);
-        el.currency.value = data.currency || "KRW";
-        el.colorMetric.value = data.colorMetric || "return";
+        el.currency.value = data.currency || "AUTO";
+        el.colorMetric.value = data.colorMetric || "daily";
         setSizeMode(data.sizeMode || "value");
         renderAll();
         toast("불러왔습니다.");
